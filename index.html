@@ -1,0 +1,2056 @@
+<title>불장 러시</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --bg:#0a0e17;
+    --surface:#131a2a;
+    --surface-2:#1b2438;
+    --surface-3:#232f4a;
+    --border:#2a3454;
+    --text:#eef2fa;
+    --text-dim:#8b96b3;
+    --gold:#f0b90b;
+    --gold-dim:#3a2f0d;
+    --up:#ff4d5e;
+    --up-dim:#3a141c;
+    --down:#4d9fff;
+    --down-dim:#152238;
+    --err:#ff9f1c;
+    --err-dim:#3a2510;
+    --bad:#ff6b6b;
+    --silver:#c9d3e0;
+    --bronze:#e0995a;
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Noto Sans KR', system-ui, sans-serif;
+    min-height:100%;
+    display:flex;
+    justify-content:center;
+  }
+  .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  [hidden]{ display:none!important; }
+
+  /* ================= PLAYER APP ================= */
+  #playerApp{
+    width:100%;
+    max-width:480px;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(240,185,11,0.07), transparent 45%),
+      radial-gradient(circle at 90% 10%, rgba(77,159,255,0.08), transparent 40%),
+      var(--bg);
+    overflow:hidden;
+  }
+  .screen{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));
+    min-height:0;
+  }
+
+  .ticker-wrap{
+    overflow:hidden; white-space:nowrap;
+    background:var(--surface); border-bottom:1px solid var(--border);
+    padding:7px 0; flex-shrink:0;
+  }
+  .ticker{ display:inline-flex; gap:26px; padding-left:26px; animation:scroll 22s linear infinite; }
+  .ticker span{
+    font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--text-dim);
+    display:inline-flex; gap:6px; align-items:center;
+  }
+  .ticker span.up{ color:var(--up); }
+  .ticker span.down{ color:var(--down); }
+  @keyframes scroll{ from{transform:translateX(0);} to{transform:translateX(-50%);} }
+
+  .eyebrow{ font-size:12px; font-weight:700; letter-spacing:.14em; color:var(--gold); text-transform:uppercase; }
+  h1.title{ font-family:'Black Han Sans', sans-serif; font-size:34px; line-height:1.15; margin:6px 0 0; text-wrap:balance; }
+  p.sub{ color:var(--text-dim); font-size:14.5px; line-height:1.55; margin:10px 0 0; }
+
+  input.nick{
+    width:100%; margin-top:22px; background:var(--surface); border:1.5px solid var(--border);
+    border-radius:14px; padding:16px 16px; color:var(--text); font-size:17px; font-weight:700;
+    outline:none; transition:border-color .15s;
+  }
+  input.nick:focus{ border-color:var(--gold); }
+  input.nick::placeholder{ color:var(--text-dim); font-weight:500; }
+
+  .btn{
+    appearance:none; border:none; border-radius:14px; padding:16px 20px;
+    font-family:'Noto Sans KR', sans-serif; font-size:16px; font-weight:700; cursor:pointer;
+    transition:transform .12s, filter .12s, opacity .12s;
+  }
+  .btn:active{ transform:scale(0.97); }
+  .btn-primary{
+    background:linear-gradient(180deg, #ffd23f, var(--gold)); color:#1a1400;
+    box-shadow:0 10px 24px -10px rgba(240,185,11,0.55);
+  }
+  .btn-primary:disabled{ opacity:.4; filter:grayscale(.4); cursor:not-allowed; box-shadow:none; }
+  .btn-ghost{ background:var(--surface-2); color:var(--text); border:1px solid var(--border); }
+
+  .spacer{ flex:1; }
+
+  .count-card{
+    margin-top:28px; background:var(--surface); border:1px solid var(--border);
+    border-radius:20px; padding:30px 20px; text-align:center;
+  }
+  .count-num{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:56px; color:var(--gold); letter-spacing:-.02em; }
+  .count-label{ color:var(--text-dim); font-size:13px; margin-top:4px; }
+  .pulse-dot{
+    display:inline-block; width:8px;height:8px;border-radius:50%; background:var(--up);
+    margin-right:6px; animation:pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+  .live-row{ display:flex; align-items:center; justify-content:center; font-size:12.5px; color:var(--text-dim); margin-top:14px; }
+
+  .quick-host{
+    position:fixed; bottom:calc(16px + env(safe-area-inset-bottom,0px)); right:16px; z-index:20;
+    background:var(--surface-3); border:1px dashed var(--gold); border-radius:12px; padding:10px 12px;
+    max-width:230px; font-size:11px; color:var(--text-dim); display:flex; flex-direction:column; gap:6px;
+  }
+  .quick-host b{ color:var(--gold); font-size:11.5px; }
+  .quick-host button{
+    background:var(--gold); color:#1a1400; border:none; border-radius:8px; padding:7px 10px;
+    font-weight:700; font-size:12px; cursor:pointer;
+  }
+
+  .game-list{ display:flex; flex-direction:column; gap:12px; margin-top:22px; }
+  .game-card{
+    display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:16px; text-align:left; color:var(--text);
+  }
+  .game-card:not(:disabled):active{ transform:scale(0.98); }
+  .game-icon{ width:48px;height:48px;flex-shrink:0; border-radius:12px; display:flex;align-items:center;justify-content:center; font-size:22px; }
+  .game-info{ flex:1; min-width:0; }
+  .game-name{ font-weight:700; font-size:15.5px; }
+  .game-desc{ color:var(--text-dim); font-size:12.5px; margin-top:2px; }
+  .game-tag{ font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:100px; flex-shrink:0; }
+  .tag-ready{ background:var(--up-dim); color:var(--up); }
+  .tag-soon{ background:var(--surface-2); color:var(--text-dim); }
+  .game-card:disabled{ opacity:.55; }
+
+  /* ---------- explain screen ---------- */
+  .rule-list{ display:flex; flex-direction:column; gap:12px; margin-top:20px; }
+  .rule-card{
+    display:flex; align-items:center; gap:14px;
+    background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:14px 16px;
+  }
+  .rule-chip{
+    width:56px; height:68px; flex-shrink:0; border-radius:10px; border:1.5px solid;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  }
+  .rule-chip.up{ background:var(--up-dim); border-color:var(--up); }
+  .rule-chip.down{ background:var(--down-dim); border-color:var(--down); }
+  .rule-chip.error{ background:var(--err-dim); border-color:var(--err); }
+  .rule-chip .arrow{ font-size:14px; }
+  .rule-chip.up .arrow, .rule-chip.up .rc-pct{ color:var(--up); }
+  .rule-chip.down .arrow, .rule-chip.down .rc-pct{ color:var(--down); }
+  .rule-chip.error .arrow, .rule-chip.error .rc-pct{ color:var(--err); }
+  .rule-chip .rc-pct{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:11px; }
+  .rule-chip .rc-tag{ font-size:8.5px; font-weight:700; color:var(--text-dim); }
+  .rule-info{ flex:1; min-width:0; }
+  .rule-name{ font-weight:800; font-size:15px; }
+  .rule-name.up{ color:var(--up); }
+  .rule-name.down{ color:var(--down); }
+  .rule-name.error{ color:var(--err); }
+  .rule-range{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px; color:var(--text); margin-top:2px; }
+  .rule-desc{ color:var(--text-dim); font-size:12px; margin-top:2px; }
+
+  /* ---------- waitstart screen ---------- */
+  .wait-badge{
+    display:inline-flex; align-items:center; gap:8px; margin-top:26px;
+    background:var(--surface); border:1px solid var(--border); border-radius:100px;
+    padding:9px 16px; font-size:13px; color:var(--text-dim); font-weight:700;
+  }
+  .spin{
+    width:14px;height:14px; border-radius:50%;
+    border:2px solid var(--border); border-top-color:var(--gold);
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .confirm-note{ margin-top:14px; font-size:12.5px; color:var(--text-dim); text-align:center; }
+  .confirm-note b{ color:var(--gold); }
+
+  /* ---------- game screen: 상한가헌터 ---------- */
+  .game-screen{ padding:0; }
+  .hud{
+    display:flex; align-items:center; gap:14px;
+    padding:calc(14px + env(safe-area-inset-top,0px)) 18px 12px;
+    background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .hud .timer-wrap{ flex:1; height:10px; background:var(--surface-2); border-radius:100px; overflow:hidden; }
+  .hud .timer-bar{ height:100%; width:100%; background:linear-gradient(90deg, var(--gold), var(--up)); border-radius:100px; transition:width .1s linear; }
+  .hud .timer-num{ font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--text); width:32px; text-align:right; font-size:15px; }
+  .score-row{
+    display:flex; align-items:baseline; gap:8px; padding:10px 18px 12px;
+    background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .score-row .label{ font-size:12px; color:var(--text-dim); font-weight:700; }
+  .score-row .value{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:26px; color:var(--gold); }
+  .instr{ font-size:12.5px; color:var(--text-dim); padding:0 18px 10px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+
+  .playfield{
+    position:relative; flex:1; overflow:hidden;
+    background: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px) 0 0/100% 40px, var(--bg);
+  }
+
+  /* ---------- game screen: 떡상을 잡아라! ---------- */
+  .g2-stats{
+    display:flex; gap:1px; background:var(--border); border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .g2-stat{ flex:1; background:var(--surface); padding:10px 8px; text-align:center; }
+  .g2-k{ font-size:10.5px; color:var(--text-dim); font-weight:700; }
+  .g2-v{ font-size:14px; font-weight:700; color:var(--text); margin-top:2px; }
+  .g2-chart-wrap{
+    position:relative; flex:1; min-height:0; background:var(--bg);
+    background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 100% 25%;
+  }
+  .g2-chart-wrap canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .g2-price-badge{
+    position:absolute; top:10px; left:12px; z-index:2; display:flex; align-items:baseline; gap:8px;
+    background:rgba(19,26,42,0.7); backdrop-filter:blur(2px); padding:6px 10px; border-radius:10px;
+  }
+  .g2-stock-name{ font-size:11.5px; color:var(--text-dim); font-weight:700; }
+  .g2-price{ font-size:19px; font-weight:700; color:var(--text); }
+  .g2-pct{ font-size:12.5px; font-weight:700; }
+  .g2-pct.up{ color:var(--up); }
+  .g2-pct.down{ color:var(--down); }
+  .g2-actions{ display:flex; gap:10px; padding:14px; background:var(--surface); border-top:1px solid var(--border); flex-shrink:0; }
+  .g2-btn{
+    flex:1; appearance:none; border:none; border-radius:14px; padding:16px 10px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:2px; font-weight:800; font-size:17px;
+    transition:transform .12s, opacity .12s;
+  }
+  .g2-btn:active{ transform:scale(0.96); }
+  .g2-btn:disabled{ opacity:.35; cursor:not-allowed; }
+  .g2-btn-sub{ font-size:11.5px; font-weight:700; font-family:'JetBrains Mono', monospace; opacity:.85; }
+  .g2-buy{ background:linear-gradient(180deg, #ff6b78, var(--up)); color:#2a0a0e; }
+  .g2-sell{ background:linear-gradient(180deg, #6fb2ff, var(--down)); color:#071a33; }
+
+  /* ---------- game screen: 호재수집가 ---------- */
+  #screen-game3{ position:relative; }
+  .g3-streak{
+    font-size:12px; font-weight:800; padding:3px 9px; border-radius:100px; margin-left:auto;
+  }
+  .g3-streak.up{ background:var(--up-dim); color:var(--up); }
+  .g3-streak.down{ background:var(--down-dim); color:var(--down); }
+  .g3-news-wrap{ flex:1; display:flex; gap:12px; padding:18px; align-items:stretch; }
+  .g3-news-card{
+    flex:1; appearance:none; border:1.5px solid var(--border); background:var(--surface);
+    border-radius:18px; padding:22px 14px; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:12px; text-align:center; cursor:pointer;
+    transition:transform .1s, border-color .1s; color:var(--text);
+  }
+  .g3-news-card:active{ transform:scale(0.96); border-color:var(--gold); }
+  .g3-news-card:disabled{ opacity:.5; cursor:not-allowed; }
+  .g3-news-tag{
+    font-size:10px; font-weight:800; letter-spacing:.1em; color:var(--bad);
+    background:var(--up-dim); padding:3px 10px; border-radius:100px;
+  }
+  .g3-news-headline{ font-size:15.5px; font-weight:800; line-height:1.45; }
+  .g3-feedback{
+    position:absolute; top:46%; left:50%; transform:translate(-50%,-50%);
+    font-family:'JetBrains Mono', monospace; font-weight:800; font-size:34px;
+    pointer-events:none; z-index:5; text-shadow:0 4px 18px rgba(0,0,0,0.5);
+  }
+  .g3-feedback.good{ color:var(--up); }
+  .g3-feedback.bad{ color:var(--down); }
+  .g3-feedback.pop{ animation:g3pop .55s ease-out forwards; }
+  @keyframes g3pop{ 0%{ transform:translate(-50%,-50%) scale(0.6); opacity:0; } 25%{ transform:translate(-50%,-50%) scale(1.08); opacity:1; } 100%{ transform:translate(-50%,-60%) scale(1); opacity:0; } }
+
+  .chip{
+    position:absolute; width:62px; height:76px; border-radius:10px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    cursor:pointer; user-select:none; -webkit-tap-highlight-color: transparent;
+    will-change:transform,top; border:1.5px solid; box-shadow:0 6px 16px -8px rgba(0,0,0,0.6);
+  }
+  .chip.up{ background:var(--up-dim); border-color:var(--up); }
+  .chip.down{ background:var(--down-dim); border-color:var(--down); }
+  .chip.error{ background:var(--err-dim); border-color:var(--err); }
+  .chip.error::before{ content:"⚠"; position:absolute; top:3px; right:5px; font-size:9px; color:var(--err); }
+  .chip .arrow{ font-size:15px; line-height:1; }
+  .chip.up .arrow{ color:var(--up); }
+  .chip.down .arrow{ color:var(--down); }
+  .chip.error .arrow{ color:var(--err); }
+  .chip .pct{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px; }
+  .chip.up .pct{ color:var(--up); }
+  .chip.down .pct{ color:var(--down); }
+  .chip.error .pct{ color:var(--err); }
+  .chip .tag{ font-size:9.5px; font-weight:700; color:var(--text-dim); }
+  .chip.error .tag{ color:var(--err); }
+  .chip.pop{ animation:pop .16s ease-out forwards; }
+  @keyframes pop{ to{ transform:scale(1.5); opacity:0; } }
+
+  .float-score{
+    position:absolute; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:20px;
+    pointer-events:none; animation:floatUp .7s ease-out forwards;
+  }
+  .float-score.good{ color:var(--gold); }
+  .float-score.bad{ color:var(--bad); }
+  @keyframes floatUp{ from{ transform:translateY(0); opacity:1; } to{ transform:translateY(-46px); opacity:0; } }
+
+  .result-card{
+    margin-top:26px; background:var(--surface); border:1px solid var(--border); border-radius:20px;
+    padding:32px 20px; text-align:center;
+  }
+  .result-card .k{ color:var(--text-dim); font-size:13px; font-weight:700; letter-spacing:.06em; }
+  .result-card .v{ font-family:'JetBrains Mono', monospace; font-size:38px; font-weight:700; color:var(--gold); margin-top:6px; }
+  .result-flavor{ margin-top:10px; font-size:14px; color:var(--text); font-weight:700; }
+
+  /* ================= HOST APP ================= */
+  #hostApp{
+    width:100%; max-width:920px; min-height:100vh;
+    display:flex; flex-direction:column;
+    padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(24px + env(safe-area-inset-bottom,0px));
+    background:
+      radial-gradient(circle at 12% 0%, rgba(240,185,11,0.06), transparent 45%),
+      radial-gradient(circle at 92% 8%, rgba(77,159,255,0.07), transparent 40%),
+      var(--bg);
+  }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand .mark{ font-family:'Black Han Sans', sans-serif; font-size:20px; color:var(--gold); }
+  .brand .host-badge{
+    font-size:10.5px; font-weight:700; letter-spacing:.08em; background:var(--surface-2); color:var(--text-dim);
+    padding:3px 9px; border-radius:100px; border:1px solid var(--border);
+  }
+  .live-badge{
+    display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:700; color:var(--up);
+    background:var(--up-dim); padding:6px 12px; border-radius:100px;
+  }
+  .live-dot{ width:7px;height:7px;border-radius:50%; background:var(--up); animation:pulse 1.1s ease-in-out infinite; }
+
+  .reset-link{
+    appearance:none; border:none; background:none; color:var(--text-dim); font-size:11.5px; font-weight:700;
+    text-decoration:underline; cursor:pointer; padding:4px;
+  }
+
+  .hscreen{ margin-top:22px; display:flex; flex-direction:column; flex:1; min-height:0; }
+  .hscreen h1{ font-family:'Black Han Sans', sans-serif; font-size:27px; margin:6px 0 0; text-wrap:balance; }
+  .hsub{ color:var(--text-dim); font-size:13.5px; margin:8px 0 0; line-height:1.5; max-width:60ch; }
+
+  .host-count-card{
+    margin-top:26px; background:var(--surface); border:1px solid var(--border); border-radius:20px;
+    padding:34px 24px; text-align:center; max-width:320px;
+  }
+  .host-count-card .v{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:52px; color:var(--gold); }
+  .host-count-card .k{ color:var(--text-dim); font-size:13px; margin-top:4px; }
+
+  .hspacer{ flex:1; min-height:24px; }
+
+  .host-btn{
+    appearance:none; border:none; border-radius:12px; padding:16px 22px; font-weight:800; font-size:16px;
+    cursor:pointer; background:linear-gradient(180deg, #ffd23f, var(--gold)); color:#1a1400;
+    box-shadow:0 10px 22px -10px rgba(240,185,11,0.5); transition:transform .12s, opacity .12s;
+    flex-shrink:0;
+  }
+  .host-btn:active{ transform:scale(.97); }
+  .host-btn.secondary{ background:var(--surface-2); color:var(--text); border:1px solid var(--border); box-shadow:none; }
+  .host-btn.wide{ width:100%; max-width:420px; }
+
+  .hype-title{
+    margin-top:18px; text-align:center; animation:hypepulse 0.9s ease-in-out infinite;
+  }
+  @keyframes hypepulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.045); } }
+  .hype-countdown{
+    margin:22px auto 0; font-size:76px; font-weight:700; color:var(--gold); text-align:center;
+  }
+  .hype-bar-wrap{
+    margin:14px auto 0; max-width:420px; width:100%; height:12px; background:var(--surface-2);
+    border-radius:100px; overflow:hidden;
+  }
+  .hype-bar{ height:100%; width:100%; background:linear-gradient(90deg, var(--up), var(--gold)); transition:width .2s linear; }
+  .mute-btn{
+    appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--text-dim);
+    font-size:12px; font-weight:700; border-radius:100px; padding:8px 14px; margin:20px auto 0; cursor:pointer;
+  }
+
+  .prize-panel{
+    margin-top:18px; background:linear-gradient(160deg, var(--gold-dim), var(--surface) 60%);
+    border:1.5px solid var(--gold); border-radius:20px; padding:36px 24px; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+  }
+  .prize-icon{ font-size:44px; }
+  .prize-text{
+    font-family:'Black Han Sans', sans-serif; font-size:22px; line-height:1.5; color:var(--text);
+    text-wrap:balance;
+  }
+  .stat-row{ display:flex; gap:12px; margin-top:14px; flex-wrap:wrap; }
+  .stat{ flex:1; min-width:140px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 16px; }
+  .stat .k{ font-size:11.5px; color:var(--text-dim); font-weight:700; letter-spacing:.04em; }
+  .stat .v{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:20px; margin-top:3px; }
+  .stat .v.gold{ color:var(--gold); }
+
+  .board{
+    margin-top:16px; background:var(--surface); border:1px solid var(--border); border-radius:18px;
+    overflow:hidden; flex:1; display:flex; flex-direction:column; min-height:0;
+  }
+  .board-head{
+    display:flex; align-items:center; gap:12px; padding:13px 18px; border-bottom:1px solid var(--border);
+    background:var(--surface-2); font-size:11.5px; font-weight:700; color:var(--text-dim); letter-spacing:.05em;
+  }
+  .board-head .col-rank{ width:44px; flex-shrink:0; }
+  .board-head .col-name{ flex:1; }
+  .board-head .col-asset{ width:130px; text-align:right; flex-shrink:0; }
+  .board-body{ overflow-y:auto; flex:1; min-height:0; }
+  .row{ display:flex; align-items:center; gap:12px; padding:11px 18px; border-bottom:1px solid var(--border); }
+  .row:last-child{ border-bottom:none; }
+  .rank{ width:44px; flex-shrink:0; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:14.5px; color:var(--text-dim); text-align:center; }
+  .row.r1, .row.r2, .row.r3{ }
+  .row.r1 .rank, .row.r2 .rank, .row.r3 .rank{ font-size:19px; }
+  .row.r1{ background:linear-gradient(90deg, rgba(240,185,11,0.12), transparent); }
+  .row.r1 .name{ color:var(--gold); font-weight:900; }
+  .row.r1 .asset{ color:var(--gold); font-size:17px; }
+  .row.r2 .name{ color:var(--silver); font-weight:800; }
+  .row.r3 .name{ color:var(--bronze); font-weight:800; }
+  .name{ flex:1; min-width:0; font-weight:700; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .name .ready-dot{ display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--up); margin-right:7px; }
+  .asset{ width:130px; flex-shrink:0; text-align:right; font-family:'JetBrains Mono', monospace; font-weight:700; font-size:14.5px; }
+  .empty-note{ padding:28px 18px; text-align:center; color:var(--text-dim); font-size:13px; }
+  .footnote{ margin-top:12px; font-size:11px; color:var(--text-dim); text-align:center; }
+</style>
+
+<!-- ================================================================= -->
+<!-- PLAYER APP                                                         -->
+<!-- ================================================================= -->
+<div id="playerApp">
+
+  <section class="screen" id="screen-nickname">
+    <div class="ticker-wrap" style="margin:-20px -20px 0;"><div class="ticker" id="ticker1"></div></div>
+    <div style="margin-top:34px;">
+      <div class="eyebrow">BULL RUSH · LIVE</div>
+      <h1 class="title">불장 러시</h1>
+      <p class="sub">전 국민 주식 서바이벌 게임. 닉네임을 입력하고<br>대기실에 입장하세요.</p>
+    </div>
+    <input class="nick" id="nickInput" type="text" maxlength="10" placeholder="닉네임 입력 (예: 개미투자자)" />
+    <div id="nickErr" style="color:var(--bad); font-size:12.5px; margin-top:8px; height:14px;"></div>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" id="btnJoin" style="width:100%;">입장하기 →</button>
+  </section>
+
+  <section class="screen" id="screen-waiting" hidden>
+    <div class="eyebrow">WAITING ROOM</div>
+    <h1 class="title" style="font-size:26px;">대기 중입니다</h1>
+    <p class="sub" id="welcomeMsg">입장 완료. 주최자가 게임을 시작하면<br>바로 화면이 전환됩니다.</p>
+    <div class="count-card">
+      <div class="count-num mono" id="liveCount">1</div>
+      <div class="count-label">명 접속 중</div>
+      <div class="live-row"><span class="pulse-dot"></span>실시간 접속자 집계</div>
+    </div>
+    <div class="confirm-note" style="opacity:.6;">현재 진행 단계: <b id="debugPhaseWaiting" class="mono">lobby</b></div>
+    <div class="spacer"></div>
+    <p style="text-align:center; font-size:12px; color:var(--text-dim);">화면을 끄지 말고 잠시만 기다려주세요</p>
+  </section>
+
+  <section class="screen" id="screen-select" hidden>
+    <div class="eyebrow">ROUND 1</div>
+    <h1 class="title" style="font-size:28px;">호스트가 게임을 고르고 있어요</h1>
+    <p class="sub">호스트가 게임을 선택하면 자동으로<br>다음 화면으로 넘어갑니다.</p>
+    <div class="game-list" style="pointer-events:none; opacity:.85;">
+      <div class="game-card">
+        <div class="game-icon" style="background:var(--up-dim);">📈</div>
+        <div class="game-info">
+          <div class="game-name">상한가헌터</div>
+          <div class="game-desc">떨어지는 차트 중 상한가만 골라 터치!</div>
+        </div>
+        <div class="game-tag tag-ready">대기</div>
+      </div>
+      <div class="game-card">
+        <div class="game-icon" style="background:var(--up-dim);">🚀</div>
+        <div class="game-info"><div class="game-name">떡상을 잡아라!</div><div class="game-desc">매수/매도로 수익률 경쟁!</div></div>
+        <div class="game-tag tag-ready">대기</div>
+      </div>
+      <div class="game-card">
+        <div class="game-icon" style="background:var(--up-dim);">📰</div>
+        <div class="game-info"><div class="game-name">호재수집가</div><div class="game-desc">호재는 빠르게, 악재는 피하세요!</div></div>
+        <div class="game-tag tag-ready">대기</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- explain screen -->
+  <section class="screen" id="screen-explain" hidden>
+    <div class="eyebrow"><span id="explainGameNameLabel">상한가헌터</span> · 게임 방법</div>
+    <h1 class="title" style="font-size:26px;" id="explainTitle">색깔별 등락폭을 확인하세요</h1>
+    <p class="sub" id="explainSub">차트가 20초 동안 떨어집니다. 터치한 색에 따라<br>초기 투자금 <b style="color:var(--gold);">100만원</b>이 오르내려요.</p>
+
+    <div class="rule-list" id="explainRulesGame1">
+      <div class="rule-card">
+        <div class="rule-chip up"><span class="arrow">▲</span><span class="rc-pct mono">+18%</span><span class="rc-tag">상한가</span></div>
+        <div class="rule-info">
+          <div class="rule-name up">빨강 · 상한가</div>
+          <div class="rule-range">0% ~ +30%</div>
+          <div class="rule-desc">항상 자산이 오릅니다</div>
+        </div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-chip error"><span class="arrow">▲</span><span class="rc-pct mono">±?%</span><span class="rc-tag">오류</span></div>
+        <div class="rule-info">
+          <div class="rule-name error">주황 · 주식장 오류!</div>
+          <div class="rule-range">−30% ~ +70%</div>
+          <div class="rule-desc">오를 수도, 내릴 수도 있어요 (랜덤)</div>
+        </div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-chip down"><span class="arrow">▼</span><span class="rc-pct mono">−24%</span><span class="rc-tag">하한가</span></div>
+        <div class="rule-info">
+          <div class="rule-name down">파랑 · 하한가</div>
+          <div class="rule-range">−50% ~ 0%</div>
+          <div class="rule-desc">항상 자산이 내려갑니다</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule-list" id="explainRulesGame2" hidden>
+      <div class="rule-card">
+        <div class="rule-chip" style="background:var(--surface-2); border-color:var(--border);">
+          <span class="arrow" style="color:var(--gold);">📈</span><span class="rc-tag" style="color:var(--text-dim);">오성전자</span>
+        </div>
+        <div class="rule-info">
+          <div class="rule-name" style="color:var(--gold);">1만원에서 시작</div>
+          <div class="rule-range">−100% ~ +200%</div>
+          <div class="rule-desc">20초 동안 크게 출렁이는 종목이에요</div>
+        </div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-chip up"><span class="arrow" style="font-size:20px;">＋</span></div>
+        <div class="rule-info">
+          <div class="rule-name up">매수</div>
+          <div class="rule-range">현재가로 최대한 매수</div>
+          <div class="rule-desc">가진 현금으로 살 수 있는 만큼 전부 사요</div>
+        </div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-chip down"><span class="arrow" style="font-size:20px;">－</span></div>
+        <div class="rule-info">
+          <div class="rule-name down">매도</div>
+          <div class="rule-range">보유 수량 전체 매도</div>
+          <div class="rule-desc">들고 있는 주식을 전부 팔아 현금으로 바꿔요</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule-list" id="explainRulesGame3" hidden>
+      <div class="rule-card">
+        <div class="rule-chip up"><span class="arrow">📰</span></div>
+        <div class="rule-info">
+          <div class="rule-name up">호재를 빠르게 선택</div>
+          <div class="rule-range">0.1초 +50점 ~ 5.0초 +1점</div>
+          <div class="rule-desc">0.1초마다 1점씩 줄어들어요 · 연속으로 맞히면 1번 늘어날 때마다 +10점 추가!</div>
+        </div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-chip down"><span class="arrow">📰</span></div>
+        <div class="rule-info">
+          <div class="rule-name down">악재는 감점</div>
+          <div class="rule-range">0.1초 −20점 ~ 5.0초 −69점</div>
+          <div class="rule-desc">0.1초마다 1점씩 더 깎여요 · 5초 안에 고르지 못하면 무조건 −70점</div>
+        </div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-chip" style="background:var(--surface-2); border-color:var(--border);"><span class="arrow" style="color:var(--gold);">⚡</span></div>
+        <div class="rule-info">
+          <div class="rule-name" style="color:var(--gold);">양쪽에 뉴스 2개 동시 등장</div>
+          <div class="rule-range">총 40턴 · 2회 진행</div>
+          <div class="rule-desc">호재(좋은 소식)와 악재(나쁜 소식)를 빠르게 구분해서 터치하세요</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn btn-primary" id="btnExplainConfirm" style="width:100%;">네, 확인했습니다.</button>
+  </section>
+
+  <!-- wait-for-host-start screen -->
+  <section class="screen" id="screen-waitstart" hidden>
+    <div class="eyebrow">STANDBY</div>
+    <h1 class="title" style="font-size:26px;">준비 완료!</h1>
+    <p class="sub">호스트가 게임을 시작하면<br>자동으로 화면이 전환됩니다.</p>
+    <div style="text-align:center;">
+      <span class="wait-badge"><span class="spin"></span>호스트 시작 대기 중</span>
+    </div>
+    <div class="confirm-note">지금까지 확인 완료 <b id="confirmedNowCount">1</b>명</div>
+    <div class="confirm-note" style="opacity:.6;">현재 진행 단계: <b id="debugPhaseWaitstart" class="mono">select</b></div>
+    <div class="spacer"></div>
+    <p style="text-align:center; font-size:12px; color:var(--text-dim);">화면을 끄지 말고 잠시만 기다려주세요</p>
+  </section>
+
+  <section class="screen game-screen" id="screen-game1" hidden>
+    <div class="hud">
+      <div class="timer-wrap"><div class="timer-bar" id="timerBar"></div></div>
+      <div class="timer-num mono" id="timerNum">20</div>
+    </div>
+    <div class="score-row">
+      <span class="label">내 자산</span>
+      <span class="value mono" id="scoreVal">1,000,000원</span>
+    </div>
+    <div class="instr" id="game1Instr">상한가 차트가 선택해서 터치해주세요 · <span style="color:var(--up);">상한가는 자산 상승</span> · <span style="color:var(--down);">하한가는 자산 하락</span> · <span style="color:var(--err);">주황(주식장 오류)은 랜덤</span></div>
+    <div class="playfield" id="playfield"></div>
+  </section>
+
+  <section class="screen game-screen" id="screen-game2" hidden>
+    <div class="hud">
+      <div class="timer-wrap"><div class="timer-bar" id="g2TimerBar"></div></div>
+      <div class="timer-num mono" id="g2TimerNum">20</div>
+    </div>
+    <div class="g2-stats">
+      <div class="g2-stat"><div class="g2-k">평가금액</div><div class="g2-v mono" id="g2Eval">1,000,000원</div></div>
+      <div class="g2-stat"><div class="g2-k">매도가능</div><div class="g2-v mono" id="g2Sellable">0주</div></div>
+      <div class="g2-stat"><div class="g2-k">매수가능</div><div class="g2-v mono" id="g2Buyable">100주</div></div>
+    </div>
+    <div class="g2-chart-wrap">
+      <div class="g2-price-badge">
+        <span class="g2-stock-name">오성전자</span>
+        <span class="g2-price mono" id="g2Price">10,000원</span>
+        <span class="g2-pct mono" id="g2Pct">+0.0%</span>
+      </div>
+      <canvas id="g2Canvas"></canvas>
+    </div>
+    <div class="g2-actions">
+      <button class="g2-btn g2-buy" id="g2BtnBuy">매수<span class="g2-btn-sub" id="g2BuyHint">0주</span></button>
+      <button class="g2-btn g2-sell" id="g2BtnSell">매도<span class="g2-btn-sub" id="g2SellHint">0주</span></button>
+    </div>
+  </section>
+
+  <section class="screen game-screen" id="screen-game3" hidden>
+    <div class="hud">
+      <div class="timer-wrap"><div class="timer-bar" id="g3TimerBar"></div></div>
+      <div class="timer-num mono" id="g3TurnNum">1/40</div>
+    </div>
+    <div class="score-row">
+      <span class="label">점수</span>
+      <span class="value mono" id="g3Score">0점</span>
+      <span class="g3-streak" id="g3StreakBadge" hidden></span>
+    </div>
+    <div class="g3-news-wrap">
+      <button class="g3-news-card" id="g3CardLeft">
+        <span class="g3-news-tag">속보</span>
+        <span class="g3-news-headline" id="g3HeadlineLeft">헤드라인</span>
+      </button>
+      <button class="g3-news-card" id="g3CardRight">
+        <span class="g3-news-tag">속보</span>
+        <span class="g3-news-headline" id="g3HeadlineRight">헤드라인</span>
+      </button>
+    </div>
+    <div class="g3-feedback" id="g3Feedback" hidden></div>
+  </section>
+
+  <section class="screen" id="screen-result" hidden>
+    <div class="eyebrow">GAME OVER</div>
+    <h1 class="title" style="font-size:28px;" id="resultTitle">상한가헌터 결과</h1>
+    <div class="result-card">
+      <div class="k" id="finalScoreLabel">최종 자산</div>
+      <div class="v mono" id="finalScore">1,000,000원</div>
+      <div class="result-flavor" id="flavorText">수고하셨습니다!</div>
+    </div>
+    <div class="confirm-note" id="resultNote" hidden>수고하셨습니다! 호스트 화면에서 최종 순위를 확인해주세요.</div>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost" id="btnRoundAction" style="width:100%;">두번째 투자 준비</button>
+  </section>
+
+  <div class="quick-host" id="quickHostPanel" hidden>
+    <b>🎤 호스트 액션 (테스트용)</b>
+    <span id="quickHostText">실제로는 호스트가 별도 화면(#host)에서 누르는 버튼입니다. 탭을 따로 열기 번거로울 때 여기서 바로 눌러 테스트하세요.</span>
+    <button id="quickHostBtn">다음으로 진행</button>
+    <button id="quickHostBtn2" hidden>다음으로 진행 2</button>
+    <button id="quickHostBtn3" hidden>다음으로 진행 3</button>
+  </div>
+</div>
+
+<!-- ================================================================= -->
+<!-- HOST APP                                                           -->
+<!-- ================================================================= -->
+<div id="hostApp" hidden>
+  <div class="topbar">
+    <div class="brand"><span class="mark">불장 러시</span><span class="host-badge">HOST VIEW</span></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <button class="reset-link" id="btnResetRound">라운드 초기화</button>
+      <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+    </div>
+  </div>
+
+  <!-- 1단계: 입장 대기 -->
+  <section class="hscreen" id="host-lobby">
+    <div class="eyebrow">1단계 · 입장 대기</div>
+    <h1>참가자들이 입장하고 있습니다</h1>
+    <p class="hsub">닉네임을 입력한 인원이 아래에 실시간으로 집계됩니다. 준비되면 진행하세요.</p>
+    <div class="host-count-card">
+      <div class="v mono" id="lobbyCount">0</div>
+      <div class="k">명 입장</div>
+    </div>
+    <div class="hspacer"></div>
+    <button class="host-btn wide" id="btnGoSelect">게임 진행 →</button>
+  </section>
+
+  <!-- 2단계: 게임 선택 (호스트가 고름) -->
+  <section class="hscreen" id="host-select" hidden>
+    <div class="eyebrow">2단계 · 게임 선택</div>
+    <h1>진행할 게임을 선택하세요</h1>
+    <p class="hsub">아래에서 하나를 고르면 참가자 전원의 화면에 규칙 설명이 표시됩니다.</p>
+    <div class="game-list">
+      <button class="game-card" id="hostCardGame1">
+        <div class="game-icon" style="background:var(--up-dim);">📈</div>
+        <div class="game-info"><div class="game-name">상한가헌터</div><div class="game-desc">떨어지는 차트 중 상한가만 골라 터치!</div></div>
+        <div class="game-tag tag-ready">선택</div>
+      </button>
+      <button class="game-card" id="hostCardGame2">
+        <div class="game-icon" style="background:var(--surface-2);">🚀</div>
+        <div class="game-info"><div class="game-name">떡상을 잡아라!</div><div class="game-desc">매수/매도로 수익률 경쟁!</div></div>
+        <div class="game-tag tag-ready">선택</div>
+      </button>
+      <button class="game-card" id="hostCardGame3">
+        <div class="game-icon" style="background:var(--up-dim);">📰</div>
+        <div class="game-info"><div class="game-name">호재수집가</div><div class="game-desc">호재는 빠르게, 악재는 피하세요!</div></div>
+        <div class="game-tag tag-ready">선택</div>
+      </button>
+    </div>
+  </section>
+
+  <!-- 3단계: 게임 설명 + 확인 인원 + 게임시작 -->
+  <section class="hscreen" id="host-explain" hidden>
+    <div class="eyebrow">3단계 · <span id="hostExplainGameName">상한가헌터</span> 설명 중</div>
+    <h1>참가자에게 규칙을 안내하고 있습니다</h1>
+    <div class="wait-badge" style="margin:0;"><span class="pulse-dot" style="margin-right:2px;"></span>확인 완료 <b class="mono" id="hostConfirmedCount">0</b> / <span class="mono" id="hostJoinCount2">0</span>명</div>
+
+    <div class="rule-list" id="hostRulesGame1" style="margin-top:16px;">
+      <div class="rule-card">
+        <div class="rule-chip up"><span class="arrow">▲</span><span class="rc-pct mono">+18%</span><span class="rc-tag">상한가</span></div>
+        <div class="rule-info"><div class="rule-name up">빨강 · 상한가</div><div class="rule-range">0% ~ +30%</div><div class="rule-desc">항상 자산이 오릅니다</div></div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-chip error"><span class="arrow">▲</span><span class="rc-pct mono">±?%</span><span class="rc-tag">오류</span></div>
+        <div class="rule-info"><div class="rule-name error">주황 · 주식장 오류!</div><div class="rule-range">−30% ~ +70%</div><div class="rule-desc">오를 수도, 내릴 수도 있어요 (랜덤)</div></div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-chip down"><span class="arrow">▼</span><span class="rc-pct mono">−24%</span><span class="rc-tag">하한가</span></div>
+        <div class="rule-info"><div class="rule-name down">파랑 · 하한가</div><div class="rule-range">−50% ~ 0%</div><div class="rule-desc">항상 자산이 내려갑니다</div></div>
+      </div>
+    </div>
+
+    <div class="rule-list" id="hostRulesGame2" style="margin-top:16px;" hidden>
+      <div class="rule-card">
+        <div class="rule-chip" style="background:var(--surface-2); border-color:var(--border);">
+          <span class="arrow" style="color:var(--gold);">📈</span><span class="rc-tag" style="color:var(--text-dim);">오성전자</span>
+        </div>
+        <div class="rule-info"><div class="rule-name" style="color:var(--gold);">1만원에서 시작</div><div class="rule-range">−100% ~ +200%</div><div class="rule-desc">20초 동안 크게 출렁이는 종목이에요</div></div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-chip up"><span class="arrow" style="font-size:20px;">＋</span></div>
+        <div class="rule-info"><div class="rule-name up">매수</div><div class="rule-range">현재가로 최대한 매수</div><div class="rule-desc">가진 현금으로 살 수 있는 만큼 전부 사요</div></div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-chip down"><span class="arrow" style="font-size:20px;">－</span></div>
+        <div class="rule-info"><div class="rule-name down">매도</div><div class="rule-range">보유 수량 전체 매도</div><div class="rule-desc">들고 있는 주식을 전부 팔아 현금으로 바꿔요</div></div>
+      </div>
+    </div>
+
+    <div class="rule-list" id="hostRulesGame3" style="margin-top:16px;" hidden>
+      <div class="rule-card">
+        <div class="rule-chip up"><span class="arrow">📰</span></div>
+        <div class="rule-info"><div class="rule-name up">호재를 빠르게 선택</div><div class="rule-range">0.1초 +50점 ~ 5.0초 +1점</div><div class="rule-desc">연속으로 맞히면 1번마다 +10점씩 추가</div></div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-chip down"><span class="arrow">📰</span></div>
+        <div class="rule-info"><div class="rule-name down">악재는 감점</div><div class="rule-range">0.1초 −20점 ~ 5.0초 −69점</div><div class="rule-desc">5초 안에 못 고르면 무조건 −70점</div></div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-chip" style="background:var(--surface-2); border-color:var(--border);"><span class="arrow" style="color:var(--gold);">⚡</span></div>
+        <div class="rule-info"><div class="rule-name" style="color:var(--gold);">양쪽 뉴스 동시 등장 · 총 40턴 · 2회 진행</div><div class="rule-range">호재 / 악재</div><div class="rule-desc">호재와 악재를 빠르게 구분해서 터치</div></div>
+      </div>
+    </div>
+
+    <div class="hspacer"></div>
+    <button class="host-btn wide" id="btnHostStartGame">게임 시작 ▶</button>
+  </section>
+
+  <!-- 4단계: 게임 진행 중 -->
+  <section class="hscreen" id="host-playing" hidden>
+    <div class="eyebrow">4단계 · 게임 진행 중</div>
+    <h1 class="hype-title" id="hostPlayingTitle">🔥 상한가헌터 진행 중!</h1>
+    <p class="hsub">참가자들이 지금 화면을 터치하며 자산을 불리고 있어요.</p>
+    <div class="hype-countdown mono" id="hostCountdown">20</div>
+    <div class="hype-bar-wrap"><div class="hype-bar" id="hostPlayingBar"></div></div>
+    <button class="mute-btn" id="btnMuteMusic">🔊 음악 끄기</button>
+  </section>
+
+  <!-- 4-b단계: 다음 라운드 대기 (1,2라운드 종료 후) -->
+  <section class="hscreen" id="host-roundwait" hidden>
+    <div class="eyebrow">라운드 대기 · <span id="hostRoundLabel">두 번째</span> 라운드</div>
+    <h1>참가자들이 다음 라운드를 준비하고 있습니다</h1>
+    <p class="hsub">투자 준비를 마친 인원이 아래에 실시간으로 집계됩니다. 준비되면 다음 라운드를 시작하세요.</p>
+    <div class="wait-badge" style="margin-top:16px;"><span class="pulse-dot" style="margin-right:2px;"></span>준비 완료 <b class="mono" id="hostRoundConfirmedCount">0</b> / <span class="mono" id="hostRoundJoinCount">0</span>명</div>
+    <div class="hspacer"></div>
+    <button class="host-btn wide" id="btnHostStartRound">게임 시작 ▶</button>
+  </section>
+
+  <!-- 4-c단계: 3라운드 종료 -> 집계 대기 -->
+  <section class="hscreen" id="host-tally" hidden>
+    <div class="eyebrow">라운드 종료</div>
+    <h1>모든 라운드가 끝났습니다</h1>
+    <p class="hsub">참가자별 최고 평가금액을 집계할 준비가 되면 아래 버튼을 누르세요.</p>
+    <div class="hspacer"></div>
+    <button class="host-btn wide" id="btnTally">집계 →</button>
+  </section>
+
+  <!-- 5단계: 상품 발표 -->
+  <section class="hscreen" id="host-ended" hidden>
+    <div class="eyebrow">5단계 · 상품 발표</div>
+    <div class="prize-panel">
+      <div class="prize-icon">🎁</div>
+      <div class="prize-text" id="prizeText">1등, 2등, 99등, 123등이<br>이번 와인의 주인공입니다!</div>
+      <button class="host-btn" id="btnRevealScores">점수 확인 →</button>
+    </div>
+  </section>
+
+  <!-- 6단계: 최종 순위 -->
+  <section class="hscreen" id="host-results" hidden>
+    <div class="eyebrow">6단계 · <span id="hostResultsGameName">상한가헌터</span> 최종 순위</div>
+    <div class="stat-row">
+      <div class="stat"><div class="k" id="statTopLabel">1위 자산</div><div class="v gold mono" id="statTop">−</div></div>
+      <div class="stat"><div class="k" id="statAvgLabel">평균 자산</div><div class="v mono" id="statAvg">−</div></div>
+      <div class="stat"><div class="k">참가자</div><div class="v" id="statCount">0명</div></div>
+    </div>
+    <div class="board" id="boardWrap">
+      <div class="board-head">
+        <span class="col-rank">순위</span>
+        <span class="col-name">닉네임</span>
+        <span class="col-asset" id="colAssetLabel">자산</span>
+      </div>
+      <div class="board-body" id="boardBody"></div>
+    </div>
+    <div class="hspacer" style="min-height:14px;"></div>
+    <button class="host-btn secondary wide" id="btnBackToList">← 게임 목록으로 돌아가기</button>
+  </section>
+
+  <div class="footnote">Firebase Realtime Database로 동기화됩니다 · 다른 기기(폰/컴퓨터)에서도 이 링크를 열면 실시간으로 연결됩니다</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-app-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-database-compat.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ===================== shared storage layer (Firebase Realtime Database) =====================
+     Same read/write function names & synchronous-return behavior as the old localStorage version,
+     so every call site elsewhere in this file works unchanged. A local in-memory cache mirrors the
+     Firebase data (kept live via .on("value") listeners); reads return from that cache instantly,
+     writes update the cache optimistically AND push to Firebase so other devices see it too. */
+  var HOST_ROUND_SECONDS = 22; // player game is 20s; give a small buffer before auto-revealing "ended"
+  var GAME_NAMES = { game1: "상한가헌터", game2: "떡상을 잡아라!", game3: "호재수집가" };
+  // 게임별로 몇 라운드를 진행할지 — 상한가헌터/떡상을 잡아라는 3회, 호재수집가는 2회.
+  var ROUND_COUNTS = { game1: 3, game2: 3, game3: 2 };
+  // 게임별 "집계" 버튼을 누른 뒤 나오는 상품 안내 문구.
+  var PRIZE_TEXT = {
+    game1: "1등,2등,3등, 100등, 234등이<br>이번 CJ 5만원 상품권의 주인공입니다!",
+    game2: "1등,2등,99등, 123등이<br>이번 와인 상품의 주인공입니다!",
+    game3: "1등,2등,101등, 321등이<br>이번 신세계 상품권의 주인공입니다!"
+  };
+
+  var firebaseConfig = {
+    apiKey: "AIzaSyCDQtrSbIuNQ0uUGKpA3ICA2QCZVbZazXw",
+    authDomain: "testgame-c70d5.firebaseapp.com",
+    databaseURL: "https://testgame-c70d5-default-rtdb.firebaseio.com",
+    projectId: "testgame-c70d5",
+    storageBucket: "testgame-c70d5.firebasestorage.app",
+    messagingSenderId: "712978539652",
+    appId: "1:712978539652:web:5c24895d09624273e04ed1"
+  };
+  var ROOM = "bullrush"; // all game state lives under this one root node in the Realtime Database
+
+  var _cache = { players: {}, phase: "lobby", phaseTs: 0, selectedGame: "", round: 1 };
+  var _fbReady = false;
+  var _onRemoteUpdate = null; // set by initPlayer()/initHost() to react to any live change
+
+  try {
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.database();
+    _fbReady = true;
+
+    db.ref(ROOM + "/players").on("value", function(snap){ _cache.players = snap.val() || {}; if (_onRemoteUpdate) _onRemoteUpdate("players"); });
+    db.ref(ROOM + "/phase").on("value", function(snap){ _cache.phase = snap.val() || "lobby"; if (_onRemoteUpdate) _onRemoteUpdate("phase"); });
+    db.ref(ROOM + "/phaseTs").on("value", function(snap){ _cache.phaseTs = snap.val() || 0; if (_onRemoteUpdate) _onRemoteUpdate("phaseTs"); });
+    db.ref(ROOM + "/selectedGame").on("value", function(snap){ _cache.selectedGame = snap.val() || ""; if (_onRemoteUpdate) _onRemoteUpdate("selectedGame"); });
+    db.ref(ROOM + "/round").on("value", function(snap){ _cache.round = snap.val() || 1; if (_onRemoteUpdate) _onRemoteUpdate("round"); });
+  } catch(e){
+    console.error("Firebase 초기화 실패 — localStorage로는 동작하지 않습니다:", e);
+  }
+
+  function readPlayers(){ return _cache.players || {}; }
+  function writePlayers(obj){ _cache.players = obj; if (_fbReady) db.ref(ROOM + "/players").set(obj); }
+  function readPhase(){ return _cache.phase || "lobby"; }
+  function writePhase(p){ _cache.phase = p; if (_fbReady) db.ref(ROOM + "/phase").set(p); }
+  function readPhaseTs(){ return Number(_cache.phaseTs) || 0; }
+  function writePhaseTs(ts){ _cache.phaseTs = ts; if (_fbReady) db.ref(ROOM + "/phaseTs").set(ts); }
+  function readSelectedGame(){ return _cache.selectedGame || ""; }
+  function writeSelectedGame(g){ _cache.selectedGame = g; if (_fbReady) db.ref(ROOM + "/selectedGame").set(g); }
+  function readRound(){ var v = Number(_cache.round); return (v && v >= 1) ? v : 1; }
+  function writeRound(r){ _cache.round = r; if (_fbReady) db.ref(ROOM + "/round").set(r); }
+
+  var PLAYER_ID = (function(){
+    try {
+      var id = sessionStorage.getItem("br_pid");
+      if (!id){
+        id = "p_" + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+        sessionStorage.setItem("br_pid", id);
+      }
+      return id;
+    } catch(e){ return "p_" + Math.random().toString(36).slice(2,10); }
+  })();
+
+  function fmtKRW(n){ return Math.round(n).toLocaleString("ko-KR") + "원"; }
+
+  /* ===================== role switch ===================== */
+  var isHost = (location.hash.replace("#","") === "host");
+  document.getElementById("playerApp").hidden = isHost;
+  document.getElementById("hostApp").hidden = !isHost;
+  window.addEventListener("hashchange", function(){ location.reload(); });
+
+  if (isHost){ initHost(); } else { initPlayer(); }
+
+  /* =================================================================
+     PLAYER APP
+  ================================================================= */
+  function initPlayer(){
+    var TICKERS = [
+      ["005930 삼성전자","+3.2%","up"],["000660 SK하이닉스","+7.8%","up"],
+      ["035420 NAVER","-1.4%","down"],["373220 LG에너지솔루션","+2.1%","up"],
+      ["005380 현대차","-0.6%","down"],["035720 카카오","+4.4%","up"],
+      ["051910 LG화학","-2.3%","down"],["207940 삼성바이오","+1.1%","up"]
+    ];
+    var tEl = document.getElementById("ticker1");
+    var html = "";
+    for (var r=0;r<2;r++){
+      TICKERS.forEach(function(t){ html += '<span class="'+t[2]+'">'+t[0]+' <b>'+t[1]+'</b></span>'; });
+    }
+    tEl.innerHTML = html;
+
+    var SCREENS = ["screen-nickname","screen-waiting","screen-select","screen-explain","screen-waitstart","screen-game1","screen-game2","screen-game3","screen-result"];
+    var curScreen = "screen-nickname";
+    function show(id){
+      curScreen = id;
+      SCREENS.forEach(function(s){ document.getElementById(s).hidden = (s !== id); });
+      if (id === "screen-explain") applyExplainContent(readSelectedGame() || "game1");
+      updateQuickHostPanel();
+      refreshDebugLabels();
+    }
+
+    function applyExplainContent(gameId){
+      document.getElementById("explainGameNameLabel").textContent = GAME_NAMES[gameId] || gameId;
+      document.getElementById("explainRulesGame1").hidden = (gameId !== "game1");
+      document.getElementById("explainRulesGame2").hidden = (gameId !== "game2");
+      document.getElementById("explainRulesGame3").hidden = (gameId !== "game3");
+      if (gameId === "game2"){
+        document.getElementById("explainTitle").textContent = "매수/매도로 수익을 내보세요";
+        document.getElementById("explainSub").innerHTML = "20초 동안 요동치는 차트를 보며<br>초기 투자금 <b style=\"color:var(--gold);\">100만원</b>을 최대한 불려보세요.";
+      } else if (gameId === "game3"){
+        document.getElementById("explainTitle").textContent = "호재는 빠르게, 악재는 피하세요";
+        document.getElementById("explainSub").innerHTML = "양쪽에 뜨는 뉴스 중 <b style=\"color:var(--up);\">호재(좋은 소식)</b>를 빠르게 골라야 점수를 얻어요.<br><b style=\"color:var(--down);\">악재(나쁜 소식)</b>를 고르면 감점돼요.";
+      } else {
+        document.getElementById("explainTitle").textContent = "색깔별 등락폭을 확인하세요";
+        document.getElementById("explainSub").innerHTML = "차트가 20초 동안 떨어집니다. 터치한 색에 따라<br>초기 투자금 <b style=\"color:var(--gold);\">100만원</b>이 오르내려요.";
+      }
+    }
+
+    function updateQuickHostPanel(){
+      var panel = document.getElementById("quickHostPanel");
+      var text = document.getElementById("quickHostText");
+      var btn = document.getElementById("quickHostBtn");
+      var btn2 = document.getElementById("quickHostBtn2");
+      var btn3 = document.getElementById("quickHostBtn3");
+      btn2.hidden = true;
+      btn3.hidden = true;
+      if (curScreen === "screen-waiting"){
+        panel.hidden = false;
+        text.textContent = "실제로는 호스트가 별도 화면(#host)에서 누르는 버튼입니다. 탭을 따로 열기 번거로울 때 여기서 바로 눌러 테스트하세요.";
+        btn.textContent = "게임 진행 →";
+        btn.onclick = function(){ writePhase("select"); onPhaseChange("select"); };
+      } else if (curScreen === "screen-select"){
+        panel.hidden = false;
+        text.textContent = "호스트가 게임을 선택한 상황을 시뮬레이션합니다.";
+        btn.textContent = "상한가헌터 선택 (시뮬레이션)";
+        btn.onclick = function(){ writeSelectedGame("game1"); writePhase("explain"); onPhaseChange("explain"); };
+        btn2.hidden = false;
+        btn2.textContent = "떡상을 잡아라! 선택 (시뮬레이션)";
+        btn2.onclick = function(){ writeSelectedGame("game2"); writePhase("explain"); onPhaseChange("explain"); };
+        btn3.hidden = false;
+        btn3.textContent = "호재수집가 선택 (시뮬레이션)";
+        btn3.onclick = function(){ writeSelectedGame("game3"); writePhase("explain"); onPhaseChange("explain"); };
+      } else if (curScreen === "screen-waitstart"){
+        panel.hidden = false;
+        text.textContent = "호스트가 게임 시작을 누른 상황을 시뮬레이션합니다.";
+        btn.textContent = "게임 시작 ▶";
+        btn.onclick = function(){ writePhase("playing"); onPhaseChange("playing"); };
+      } else {
+        panel.hidden = true;
+      }
+    }
+
+    var state = { nickname: "", asset: 1000000, round: 1 };
+    var INITIAL_ASSET = 1000000;
+
+    try {
+      var saved = localStorage.getItem("bullrush_nick");
+      if (saved) document.getElementById("nickInput").value = saved;
+    } catch(e){}
+
+    function joinAsPlayer(name){
+      var players = readPlayers();
+      players[PLAYER_ID] = { name: name, confirmedRound: 0, asset: INITIAL_ASSET, ts: Date.now() };
+      writePlayers(players);
+    }
+    // confirmedRound = the highest round number this player has confirmed
+    // they're ready to play. Round-aware (rather than a single reused boolean)
+    // so that a player who confirms early for round N+1 doesn't get wiped out
+    // by the host's automatic round transition before the host's "게임 시작"
+    // click for round N+1 actually happens.
+    function setConfirmedRound(r){
+      var players = readPlayers();
+      players[PLAYER_ID] = players[PLAYER_ID] || { name: state.nickname, asset: state.asset, ts: Date.now() };
+      players[PLAYER_ID].confirmedRound = r;
+      players[PLAYER_ID].name = state.nickname;
+      writePlayers(players);
+    }
+    function pushAsset(){
+      var players = readPlayers();
+      if (players[PLAYER_ID]){ players[PLAYER_ID].asset = state.asset; writePlayers(players); }
+    }
+    function liveJoinCount(){ return Object.keys(readPlayers()).length; }
+    function liveConfirmedCount(targetRound){
+      var players = readPlayers();
+      var n = 0;
+      Object.keys(players).forEach(function(k){ if ((players[k].confirmedRound || 0) >= targetRound) n++; });
+      return n;
+    }
+
+    // ---------- nickname -> join ----------
+    var nickInput = document.getElementById("nickInput");
+    var nickErr = document.getElementById("nickErr");
+    document.getElementById("btnJoin").addEventListener("click", function(){
+      var v = nickInput.value.trim();
+      if (!v){ nickErr.textContent = "닉네임을 입력해주세요."; return; }
+      nickErr.textContent = "";
+      state.nickname = v;
+      try { localStorage.setItem("bullrush_nick", v); } catch(e){}
+      joinAsPlayer(v);
+
+      var phase = readPhase();
+      document.getElementById("welcomeMsg").innerHTML = v + "님, 입장 완료!<br>주최자가 게임을 시작하면 바로 화면이 전환됩니다.";
+      document.getElementById("liveCount").textContent = String(liveJoinCount());
+      if (phase === "lobby") show("screen-waiting");
+      else if (phase === "explain") show("screen-explain");
+      else show("screen-select");
+    });
+    nickInput.addEventListener("keydown", function(e){ if (e.key === "Enter") document.getElementById("btnJoin").click(); });
+
+    // ---------- explain -> confirm -> waitstart ----------
+    document.getElementById("btnExplainConfirm").addEventListener("click", function(){
+      setConfirmedRound(1);
+      document.getElementById("confirmedNowCount").textContent = String(liveConfirmedCount(1));
+      show("screen-waitstart");
+      var phase = readPhase();
+      if (phase === "playing"){ launchSelectedGame(); }
+    });
+
+    // ---------- cross-tab / poll sync ----------
+    // Keyed on (phase + phaseTs) rather than phase alone: "playing" is reused
+    // for every round, and Firebase's "value" listener only ever delivers the
+    // LATEST snapshot — if the host advances quickly (round1 "playing" ->
+    // "roundwait" -> round2 "playing"), a player's listener can coalesce
+    // straight from round1's "playing" to round2's "playing" WITHOUT ever
+    // seeing "roundwait" in between. Since the string "playing" is identical
+    // both times, a plain phase-string comparison would treat that as "no
+    // change" and silently skip launching round 2 (and every round after).
+    // phaseTs is a fresh Date.now() each time a round actually starts, so
+    // including it in the dedup key makes every real round-start a genuine
+    // change even when an intermediate phase value was never received.
+    var lastPhaseKey = readPhase() + "|" + readPhaseTs();
+    var launchedRoundTs = 0; // phaseTs of the round currently playing/just played, for this tab
+    function stopAnyGame(){ stopGame1(); stopGame2(); stopGame3(); }
+
+    function launchSelectedGame(){
+      launchedRoundTs = readPhaseTs();
+      var gameId = readSelectedGame() || "game1";
+      if (gameId === "game2"){ show("screen-game2"); startGame2(); }
+      else if (gameId === "game3"){ show("screen-game3"); startGame3(); }
+      else { show("screen-game1"); startGame1(); }
+    }
+
+    function onPhaseChange(phase){
+      var key = phase + "|" + readPhaseTs();
+      if (key === lastPhaseKey) return;
+      lastPhaseKey = key;
+      if (phase === "lobby"){
+        if (state.nickname && curScreen !== "screen-nickname" && curScreen !== "screen-waiting"){
+          stopAnyGame();
+          setConfirmedRound(0);
+          state.round = 1;
+          show("screen-waiting");
+        }
+      } else if (phase === "select"){
+        if (curScreen === "screen-waiting") show("screen-select");
+        else if (curScreen === "screen-explain" || curScreen === "screen-game1" || curScreen === "screen-game2" || curScreen === "screen-game3" || curScreen === "screen-waitstart" || curScreen === "screen-result"){
+          stopAnyGame();
+          setConfirmedRound(0);
+          state.round = 1;
+          show("screen-select");
+        }
+      } else if (phase === "explain"){
+        state.round = 1;
+        if (curScreen === "screen-select") show("screen-explain");
+      } else if (phase === "playing"){
+        if (curScreen === "screen-waitstart") launchSelectedGame();
+      }
+    }
+    function refreshDebugLabels(){
+      var phase = readPhase();
+      if (curScreen === "screen-waiting"){
+        document.getElementById("liveCount").textContent = String(liveJoinCount());
+        document.getElementById("debugPhaseWaiting").textContent = phase;
+      }
+      if (curScreen === "screen-waitstart"){
+        document.getElementById("confirmedNowCount").textContent = String(liveConfirmedCount(state.round));
+        document.getElementById("debugPhaseWaitstart").textContent = phase;
+      }
+    }
+    _onRemoteUpdate = function(){
+      onPhaseChange(readPhase());
+      refreshDebugLabels();
+    };
+    setInterval(function(){
+      onPhaseChange(readPhase());
+      refreshDebugLabels();
+    }, 700);
+
+    /* ---------- game: 상한가헌터 ---------- */
+    var GAME_DURATION = 20;
+    var raf = null, spawnTimer = null, countdownTimer = null, assetPushTimer = null;
+    var chips = [];
+    var chipId = 0;
+
+    function startGame1(){
+      state.asset = INITIAL_ASSET;
+      document.getElementById("scoreVal").textContent = fmtKRW(state.asset);
+      document.getElementById("timerBar").style.width = "100%";
+      document.getElementById("timerNum").textContent = String(GAME_DURATION);
+      var field = document.getElementById("playfield");
+      field.innerHTML = "";
+      chips = [];
+
+      var startTime = performance.now();
+      var elapsed = 0;
+
+      function spawnChip(laneX, laneWidth){
+        var field = document.getElementById("playfield");
+        var w = field.clientWidth;
+        var isError = Math.random() < 0.42;
+        var isUp = Math.random() < 0.5;
+        var kind = isError ? "error" : (isUp ? "up" : "down");
+
+        var val;
+        if (kind === "up"){ val = Math.round(Math.random() * 30); }
+        else if (kind === "down"){ val = -Math.round(Math.random() * 50); }
+        else { val = Math.round(-30 + Math.random() * 100); }
+
+        var pctText = (val >= 0 ? "+" : "") + val + "%";
+        var tagText = kind === "error" ? "주식장 오류!" : (kind === "up" ? "상한가" : "하한가");
+        var arrow = val > 0 ? "▲" : (val < 0 ? "▼" : "─");
+
+        var el = document.createElement("div");
+        el.className = "chip " + kind;
+        el.innerHTML =
+          '<span class="arrow">'+arrow+'</span>' +
+          '<span class="pct mono">'+pctText+'</span>' +
+          '<span class="tag">'+tagText+'</span>';
+
+        var x;
+        if (laneWidth != null){
+          var pad = Math.max(0, laneWidth - 62);
+          x = laneX + Math.random() * pad;
+          x = Math.min(Math.max(4, x), Math.max(4, w - 66));
+        } else {
+          x = 8 + Math.random() * Math.max(0, (w - 70));
+        }
+        el.style.left = x + "px";
+        el.style.top = "-84px";
+        field.appendChild(el);
+        var chip = { id: chipId++, el: el, val: val, y: -84, hit: false };
+        el.addEventListener("pointerdown", function(){ handleHit(chip); });
+        chips.push(chip);
+      }
+
+      function handleHit(chip){
+        if (chip.hit) return;
+        chip.hit = true;
+        state.asset = Math.max(0, state.asset * (1 + chip.val / 100));
+        document.getElementById("scoreVal").textContent = fmtKRW(state.asset);
+        pushAsset();
+
+        var field = document.getElementById("playfield");
+        var pop = document.createElement("div");
+        pop.className = "float-score " + (chip.val >= 0 ? "good" : "bad");
+        pop.textContent = (chip.val > 0 ? "+" : "") + chip.val + "%";
+        pop.style.left = chip.el.style.left;
+        pop.style.top = chip.y + "px";
+        field.appendChild(pop);
+        setTimeout(function(){ pop.remove(); }, 720);
+
+        chip.el.classList.add("pop");
+        setTimeout(function(){ chip.el.remove(); }, 170);
+        chips = chips.filter(function(c){ return c.id !== chip.id; });
+      }
+
+      var lastTs = performance.now();
+      function tick(ts){
+        var dt = Math.min(40, ts - lastTs);
+        lastTs = ts;
+        elapsed = (ts - startTime) / 1000;
+        var progress = Math.min(1, elapsed / GAME_DURATION);
+        var speed = 95 + Math.pow(progress, 1.3) * 260;
+
+        for (var i = chips.length - 1; i >= 0; i--){
+          var c = chips[i];
+          if (c.hit) continue;
+          c.y += speed * (dt / 1000);
+          c.el.style.top = c.y + "px";
+          if (c.y > (document.getElementById("playfield").clientHeight + 20)){
+            c.el.remove();
+            chips.splice(i, 1);
+          }
+        }
+        if (elapsed < GAME_DURATION){ raf = requestAnimationFrame(tick); }
+      }
+      raf = requestAnimationFrame(tick);
+
+      function scheduleSpawn(){
+        var progress = Math.min(1, elapsed / GAME_DURATION);
+        var interval = 620 - progress * 340;
+        var waveSize = 2 + Math.floor(progress * 3) + (Math.random() < 0.5 ? 1 : 0);
+        var field = document.getElementById("playfield");
+        var w = field.clientWidth;
+        var lane = Math.max(70, w / waveSize);
+        var slots = [];
+        for (var s = 0; s < waveSize; s++) slots.push(s);
+        slots.sort(function(){ return Math.random() - 0.5; });
+        slots.forEach(function(slot, k){
+          setTimeout(function(){ spawnChip(slot * lane, lane); }, k * 70);
+        });
+        spawnTimer = setTimeout(scheduleSpawn, interval);
+      }
+      scheduleSpawn();
+
+      countdownTimer = setInterval(function(){
+        var remain = Math.max(0, GAME_DURATION - elapsed);
+        document.getElementById("timerNum").textContent = String(Math.ceil(remain));
+        document.getElementById("timerBar").style.width = (remain / GAME_DURATION * 100) + "%";
+        if (remain <= 0){ endGame1(); }
+      }, 100);
+
+      assetPushTimer = setInterval(pushAsset, 500);
+    }
+
+    function stopGame1(){
+      clearInterval(countdownTimer);
+      clearTimeout(spawnTimer);
+      clearInterval(assetPushTimer);
+      cancelAnimationFrame(raf);
+      chips.forEach(function(c){ c.el.remove(); });
+      chips = [];
+    }
+
+    // 게임별로 따로 기록 — 상한가헌터 3회분과 떡상을 잡아라 3회분, 호재수집가 2회분이
+    // 서로 덮어쓰지 않도록 gameId별 배열에 저장한다 (한 닉네임이 여러 게임을 순서대로
+    // 플레이해도 이전 게임 결과가 그대로 남아있어야 최종 집계 때 게임별로 순위를 낼 수 있음).
+    function recordRoundScore(round, finalValue, gameId){
+      var players = readPlayers();
+      var p = players[PLAYER_ID];
+      if (!p) return;
+      p.gameScores = p.gameScores || {};
+      p.gameScores[gameId] = p.gameScores[gameId] || [];
+      p.gameScores[gameId][round - 1] = finalValue;
+      p.asset = finalValue;
+      writePlayers(players);
+    }
+
+    var ORDINAL_KR = { 2: "두번째", 3: "세번째", 4: "네번째" };
+    function nextRoundLabel(gameId, round){
+      var next = round + 1;
+      var ord = ORDINAL_KR[next] || (next + "번째");
+      return ord + (gameId === "game3" ? " 도전 준비" : " 투자 준비");
+    }
+
+    function showResult(finalValue, gameId){
+      document.getElementById("resultTitle").textContent = (GAME_NAMES[gameId] || gameId) + " 결과";
+      var flavor;
+      if (gameId === "game3"){
+        document.getElementById("finalScoreLabel").textContent = "최종 점수";
+        document.getElementById("finalScore").textContent = finalValue.toLocaleString("ko-KR") + "점";
+        if (finalValue >= 350) flavor = "🔥 호재 사냥꾼! 완벽한 판단력";
+        else if (finalValue >= 250) flavor = "🚀 뛰어난 정보력! 훌륭해요";
+        else if (finalValue >= 130) flavor = "📈 괜찮은 판단이었어요";
+        else if (finalValue >= 40) flavor = "🙂 반은 맞고 반은 아쉬워요";
+        else if (finalValue >= 0) flavor = "😅 호재/악재 구분이 헷갈렸나봐요";
+        else flavor = "📉 악재에 낚였어요... 재도전 필요";
+      } else {
+        document.getElementById("finalScoreLabel").textContent = "최종 자산";
+        document.getElementById("finalScore").textContent = fmtKRW(finalValue);
+        var ratio = finalValue / INITIAL_ASSET;
+        if (ratio >= 3) flavor = "🔥 전설의 개미! 자산 3배 돌파";
+        else if (ratio >= 1.8) flavor = "🚀 대박 수익! 슈퍼개미 등극";
+        else if (ratio >= 1.1) flavor = "📈 훌륭해요! 이 정도면 전업 투자자";
+        else if (ratio >= 0.9) flavor = "🙂 본전 근처, 나쁘지 않아요";
+        else if (ratio >= 0.5) flavor = "😅 오늘은 물타기 하는 날...";
+        else flavor = "📉 상장폐지 직전... 재도전 필요";
+      }
+      document.getElementById("flavorText").textContent = flavor;
+
+      recordRoundScore(state.round, finalValue, gameId);
+
+      var totalRounds = ROUND_COUNTS[gameId] || 3;
+      var actionBtn = document.getElementById("btnRoundAction");
+      var note = document.getElementById("resultNote");
+      if (state.round < totalRounds){
+        actionBtn.hidden = false;
+        actionBtn.textContent = nextRoundLabel(gameId, state.round);
+        note.hidden = true;
+      } else {
+        actionBtn.hidden = true;
+        note.hidden = false;
+      }
+
+      setTimeout(function(){ show("screen-result"); }, 400);
+    }
+
+    function endGame1(){
+      stopGame1();
+      pushAsset();
+      showResult(state.asset, "game1");
+    }
+
+    document.getElementById("btnRoundAction").addEventListener("click", function(){
+      state.round++;
+      setConfirmedRound(state.round);
+      show("screen-waitstart");
+      // Unlike round 1's explain->confirm handler, we can't just check
+      // readPhase()==="playing" here — that value is very likely still the
+      // JUST-FINISHED round (the host hasn't auto-advanced to "roundwait" yet,
+      // which happens a couple seconds after the player's own local game timer
+      // ends). Only treat it as "host already started the next round" if its
+      // phaseTs is NEWER than the round we just played — that covers a player
+      // who dawdles on the result screen long enough for the host to start the
+      // next round before they click.
+      var phase = readPhase();
+      var ts = readPhaseTs();
+      if (phase === "playing" && ts > launchedRoundTs){
+        launchSelectedGame();
+      }
+    });
+
+    /* ---------- game2: 떡상을 잡아라! ---------- */
+    var G2_DURATION = 20;
+    var g2Raf = null, g2CountdownTimer = null, g2AssetPushTimer = null;
+    var g2 = null; // per-round state
+
+    function g2Fmt(n){ return Math.round(n).toLocaleString("ko-KR"); }
+
+    function startGame2(){
+      var BASE_PRICE = 10000, PRICE_MIN = 100, PRICE_MAX = 30000;
+      g2 = {
+        cash: INITIAL_ASSET,
+        shares: 0,
+        price: BASE_PRICE,
+        basePrice: BASE_PRICE,
+        priceMin: PRICE_MIN,
+        priceMax: PRICE_MAX,
+        history: [BASE_PRICE],
+        waves: [
+          { amp: 5500 + Math.random()*2500, freq: 0.12 + Math.random()*0.10, phase: Math.random()*Math.PI*2 },
+          { amp: 3500 + Math.random()*2000, freq: 0.28 + Math.random()*0.15, phase: Math.random()*Math.PI*2 },
+          { amp: 2000 + Math.random()*1500, freq: 0.55 + Math.random()*0.25, phase: Math.random()*Math.PI*2 }
+        ],
+        noise: 0
+      };
+      state.asset = INITIAL_ASSET;
+
+      document.getElementById("g2TimerBar").style.width = "100%";
+      document.getElementById("g2TimerNum").textContent = String(G2_DURATION);
+      g2UpdateHud();
+      g2Draw();
+
+      var canvas = document.getElementById("g2Canvas");
+      function resizeCanvas(){
+        var rect = canvas.parentElement.getBoundingClientRect();
+        var dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+      }
+      resizeCanvas();
+      g2.resizeHandler = resizeCanvas;
+      window.addEventListener("resize", g2.resizeHandler);
+
+      var startTime = performance.now();
+      var lastTs = startTime;
+      function tick(ts){
+        var dt = Math.min(0.05, (ts - lastTs) / 1000);
+        lastTs = ts;
+        var elapsed = (ts - startTime) / 1000;
+
+        g2.noise += (Math.random() - 0.5) * 900 * dt * 10;
+        g2.noise *= Math.pow(0.90, dt * 10);
+        var wavesSum = g2.waves.reduce(function(s, w){ return s + w.amp * Math.sin(2*Math.PI*w.freq*elapsed + w.phase); }, 0);
+        var raw = g2.basePrice + wavesSum + g2.noise;
+        raw = Math.max(g2.priceMin, Math.min(g2.priceMax, raw));
+        g2.price = Math.round(raw / 10) * 10;
+        g2.history.push(g2.price);
+        if (g2.history.length > 400) g2.history.shift();
+
+        g2UpdateHud();
+        g2Draw();
+
+        if (elapsed < G2_DURATION){ g2Raf = requestAnimationFrame(tick); }
+      }
+      g2Raf = requestAnimationFrame(tick);
+
+      g2CountdownTimer = setInterval(function(){
+        var elapsed = (performance.now() - startTime) / 1000;
+        var remain = Math.max(0, G2_DURATION - elapsed);
+        document.getElementById("g2TimerNum").textContent = String(Math.ceil(remain));
+        document.getElementById("g2TimerBar").style.width = (remain / G2_DURATION * 100) + "%";
+        if (remain <= 0){ endGame2(); }
+      }, 100);
+
+      g2AssetPushTimer = setInterval(g2PushAsset, 500);
+    }
+
+    function g2CurrentEval(){
+      return g2.cash + g2.shares * g2.price;
+    }
+    function g2PushAsset(){
+      state.asset = g2CurrentEval();
+      pushAsset();
+    }
+    function g2UpdateHud(){
+      if (!g2) return;
+      var evalValue = g2CurrentEval();
+      document.getElementById("g2Eval").textContent = fmtKRW(evalValue);
+      document.getElementById("g2Sellable").textContent = g2Fmt(g2.shares) + "주";
+      var buyable = Math.floor(g2.cash / g2.price);
+      document.getElementById("g2Buyable").textContent = g2Fmt(buyable) + "주";
+      document.getElementById("g2BuyHint").textContent = g2Fmt(buyable) + "주";
+      document.getElementById("g2SellHint").textContent = g2Fmt(g2.shares) + "주";
+      document.getElementById("g2Price").textContent = fmtKRW(g2.price);
+      var pct = ((g2.price - g2.basePrice) / g2.basePrice) * 100;
+      var pctEl = document.getElementById("g2Pct");
+      pctEl.textContent = (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
+      pctEl.className = "g2-pct mono " + (pct >= 0 ? "up" : "down");
+      document.getElementById("g2BtnBuy").disabled = buyable <= 0;
+      document.getElementById("g2BtnSell").disabled = g2.shares <= 0;
+    }
+    function g2Draw(){
+      if (!g2) return;
+      var canvas = document.getElementById("g2Canvas");
+      var ctx = canvas.getContext("2d");
+      var w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      if (g2.history.length < 2) return;
+
+      var lo = g2.priceMin, hi = g2.priceMax;
+      function yOf(p){ return h - ((p - lo) / (hi - lo)) * h; }
+      var n = g2.history.length;
+      function xOf(i){ return (i / (n - 1)) * w; }
+
+      // baseline (starting price)
+      ctx.strokeStyle = "rgba(240,185,11,0.35)";
+      ctx.setLineDash([6, 6]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      var baseY = yOf(g2.basePrice);
+      ctx.moveTo(0, baseY); ctx.lineTo(w, baseY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // area fill
+      var lastPrice = g2.history[n-1];
+      var lineColor = lastPrice >= g2.basePrice ? "#ff4d5e" : "#4d9fff";
+      ctx.beginPath();
+      ctx.moveTo(xOf(0), yOf(g2.history[0]));
+      for (var i = 1; i < n; i++) ctx.lineTo(xOf(i), yOf(g2.history[i]));
+      ctx.lineTo(w, h); ctx.lineTo(0, h);
+      ctx.closePath();
+      var grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, lineColor + "33");
+      grad.addColorStop(1, lineColor + "00");
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // line
+      ctx.beginPath();
+      ctx.moveTo(xOf(0), yOf(g2.history[0]));
+      for (var j = 1; j < n; j++) ctx.lineTo(xOf(j), yOf(g2.history[j]));
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 2.5 * (window.devicePixelRatio || 1);
+      ctx.lineJoin = "round";
+      ctx.stroke();
+
+      // emphasized endpoint
+      ctx.beginPath();
+      ctx.arc(xOf(n-1), yOf(g2.history[n-1]), 4.5 * (window.devicePixelRatio || 1), 0, Math.PI*2);
+      ctx.fillStyle = lineColor;
+      ctx.fill();
+    }
+
+    function stopGame2(){
+      clearInterval(g2CountdownTimer);
+      clearInterval(g2AssetPushTimer);
+      cancelAnimationFrame(g2Raf);
+      if (g2 && g2.resizeHandler) window.removeEventListener("resize", g2.resizeHandler);
+    }
+
+    function endGame2(){
+      stopGame2();
+      g2PushAsset();
+      showResult(state.asset, "game2");
+    }
+
+    document.getElementById("g2BtnBuy").addEventListener("click", function(){
+      if (!g2) return;
+      var qty = Math.floor(g2.cash / g2.price);
+      if (qty <= 0) return;
+      g2.cash -= qty * g2.price;
+      g2.shares += qty;
+      g2UpdateHud();
+    });
+    document.getElementById("g2BtnSell").addEventListener("click", function(){
+      if (!g2 || g2.shares <= 0) return;
+      g2.cash += g2.shares * g2.price;
+      g2.shares = 0;
+      g2UpdateHud();
+    });
+
+    /* ---------- game3: 호재수집가 ---------- */
+    var NEWS_GOOD = [
+      "글로벌 기업과 대규모 수주 계약 체결",
+      "유명 연예인 광고 모델로 발탁",
+      "신제품 예약 판매 완판 행진",
+      "해외 공장 증설 계획 발표",
+      "핵심 특허 기술 상용화 성공",
+      "정부 지원사업 대상 기업 선정",
+      "실적 시장 예상치 크게 상회",
+      "대형 신규 고객사 확보 발표",
+      "배당금 확대 지급 결정",
+      "대규모 자사주 매입 발표",
+      "해외 수출 물량 급증세",
+      "글로벌 기업과 합작법인 설립",
+      "국제 우수기업 인증 획득",
+      "신용평가사 신용등급 상향",
+      "히트 상품 출시 대성공",
+      "대규모 투자 유치 성공",
+      "매출 목표 초과 달성 발표",
+      "핵심 기술 국산화 성공",
+      "우량 거래처와 신규 계약 체결",
+      "친환경 인증 취득 발표",
+      "해외 유명 매체 호평 기사",
+      "우수 인재 대규모 영입",
+      "정부 우수기업 표창 수상",
+      "신규 해외 진출 계약 성사"
+    ];
+    var NEWS_BAD = [
+      "임직원 근무 중 안전사고 발생",
+      "오너 리스크 관련 수사 착수",
+      "임원진 보유 주식 대량 매도",
+      "회계 부정 의혹 제기",
+      "임원 횡령 혐의 적발",
+      "핵심 인력 대규모 퇴사",
+      "품질 결함으로 제품 리콜",
+      "노조 파업으로 생산 중단",
+      "주요 거래처 계약 해지 통보",
+      "환경 오염 사고 발생",
+      "특허 소송 최종 패소",
+      "실적 어닝쇼크 발표",
+      "신용평가사 신용등급 하향",
+      "공장 화재 사고 발생",
+      "고객 개인정보 유출 사고",
+      "당국 제재 조치 발표",
+      "주요 주주 지분 대량 매각",
+      "내부자 거래 의혹 제기",
+      "매출 급감 실적 발표",
+      "해외 사업 철수 결정",
+      "근로기준법 위반 적발",
+      "제품 안전성 논란 확산",
+      "임원 갑질 논란 확산",
+      "매출 전망 하향 조정"
+    ];
+
+    var G3_TURNS = 40;
+    var G3_TURN_TIMEOUT = 5000; // ms — 5초 안에 선택 못하면 타임아웃(-70점 고정)
+    var g3 = null; // per-round state
+
+    function shuffleArr(arr){
+      var a = arr.slice();
+      for (var i = a.length - 1; i > 0; i--){
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+      }
+      return a;
+    }
+
+    // NEWS_GOOD/NEWS_BAD each hold 24 handpicked, unambiguous headlines —
+    // fewer than G3_TURNS(40), so cycle through freshly-reshuffled copies of
+    // the pool until we have enough, rather than crashing on an out-of-range
+    // index or reusing one fixed order every game.
+    function pickN(arr, n){
+      var result = [];
+      while (result.length < n){ result = result.concat(shuffleArr(arr)); }
+      return result.slice(0, n);
+    }
+
+    function startGame3(){
+      var goodOrder = pickN(NEWS_GOOD, G3_TURNS);
+      var badOrder = pickN(NEWS_BAD, G3_TURNS);
+      g3 = {
+        turn: 0,
+        score: 0,
+        goodStreak: 0,
+        badStreak: 0,
+        turnStartTs: 0,
+        turnTimer: null,
+        locked: false,
+        leftIsGood: true,
+        pairs: goodOrder.map(function(good, i){ return { good: good, bad: badOrder[i] }; })
+      };
+      document.getElementById("g3Score").textContent = "0점";
+      document.getElementById("g3StreakBadge").hidden = true;
+      nextG3Turn();
+    }
+
+    function nextG3Turn(){
+      if (!g3) return;
+      if (g3.turn >= G3_TURNS){ endGame3(); return; }
+      g3.locked = false;
+      var pair = g3.pairs[g3.turn];
+      g3.turn++;
+      document.getElementById("g3TurnNum").textContent = g3.turn + "/" + G3_TURNS;
+
+      var goodOnLeft = Math.random() < 0.5;
+      g3.leftIsGood = goodOnLeft;
+      document.getElementById("g3HeadlineLeft").textContent = goodOnLeft ? pair.good : pair.bad;
+      document.getElementById("g3HeadlineRight").textContent = goodOnLeft ? pair.bad : pair.good;
+
+      document.getElementById("g3CardLeft").disabled = false;
+      document.getElementById("g3CardRight").disabled = false;
+
+      var bar = document.getElementById("g3TimerBar");
+      bar.style.transition = "none";
+      bar.style.width = "100%";
+      requestAnimationFrame(function(){
+        bar.style.transition = "width " + (G3_TURN_TIMEOUT / 1000) + "s linear";
+        bar.style.width = "0%";
+      });
+
+      g3.turnStartTs = performance.now();
+      clearTimeout(g3.turnTimer);
+      g3.turnTimer = setTimeout(function(){ handleG3Pick(null); }, G3_TURN_TIMEOUT);
+    }
+
+    // 5초를 0.1초 단위 50개 구간으로 쪼갠 연속 점수.
+    // 호재: 0.1초→50점, 0.2초→49점, ... 5.0초→1점 (0.1초마다 1점씩 감소)
+    // 악재: 0.1초→-20점, 0.2초→-21점, ... 5.0초→-69점 (0.1초마다 1점씩 추가 감점)
+    // 5초를 넘기면(또는 아예 선택하지 않으면) 무조건 -70점 고정.
+    function g3Tier(elapsedMs){
+      return Math.min(50, Math.max(1, Math.ceil(elapsedMs / 100)));
+    }
+    function g3TimeBonus(elapsedMs){
+      return 51 - g3Tier(elapsedMs);
+    }
+    function g3TimePenalty(elapsedMs){
+      return -(19 + g3Tier(elapsedMs));
+    }
+
+    function g3Feedback(text, isGood){
+      var el = document.getElementById("g3Feedback");
+      el.textContent = text;
+      el.className = "g3-feedback " + (isGood ? "good" : "bad");
+      el.hidden = false;
+      el.classList.remove("pop");
+      requestAnimationFrame(function(){ el.classList.add("pop"); });
+      setTimeout(function(){ el.hidden = true; }, 550);
+    }
+
+    function handleG3Pick(pickedIsGood){
+      if (!g3 || g3.locked) return;
+      g3.locked = true;
+      clearTimeout(g3.turnTimer);
+      document.getElementById("g3CardLeft").disabled = true;
+      document.getElementById("g3CardRight").disabled = true;
+
+      if (pickedIsGood === null || (performance.now() - g3.turnStartTs) >= G3_TURN_TIMEOUT){
+        // 5초 안에 선택하지 못함(또는 방어적으로 5초를 넘겨 도착한 클릭) — -70점 고정, 스트릭 초기화
+        g3.goodStreak = 0;
+        g3.badStreak = 0;
+        g3.score += -70;
+        g3Feedback("시간 초과 -70", false);
+      } else {
+        var elapsed = performance.now() - g3.turnStartTs;
+        if (pickedIsGood){
+          g3.goodStreak++;
+          g3.badStreak = 0;
+          var gain = g3TimeBonus(elapsed) + (g3.goodStreak - 1) * 10;
+          g3.score += gain;
+          g3Feedback("+" + gain, true);
+        } else {
+          g3.badStreak++;
+          g3.goodStreak = 0;
+          var loss = g3TimePenalty(elapsed);
+          g3.score += loss;
+          g3Feedback(String(loss), false);
+        }
+      }
+
+      document.getElementById("g3Score").textContent = g3.score.toLocaleString("ko-KR") + "점";
+      var streakBadge = document.getElementById("g3StreakBadge");
+      if (g3.goodStreak >= 2){
+        streakBadge.hidden = false;
+        streakBadge.className = "g3-streak up";
+        streakBadge.textContent = g3.goodStreak + "연속 호재!";
+      } else if (g3.badStreak >= 2){
+        streakBadge.hidden = false;
+        streakBadge.className = "g3-streak down";
+        streakBadge.textContent = g3.badStreak + "연속 악재...";
+      } else {
+        streakBadge.hidden = true;
+      }
+
+      setTimeout(nextG3Turn, 550);
+    }
+
+    function stopGame3(){
+      if (g3){ clearTimeout(g3.turnTimer); }
+    }
+
+    function endGame3(){
+      stopGame3();
+      var finalScore = g3 ? g3.score : 0;
+      g3 = null;
+      showResult(finalScore, "game3");
+    }
+
+    document.getElementById("g3CardLeft").addEventListener("click", function(){
+      if (!g3) return;
+      handleG3Pick(g3.leftIsGood);
+    });
+    document.getElementById("g3CardRight").addEventListener("click", function(){
+      if (!g3) return;
+      handleG3Pick(!g3.leftIsGood);
+    });
+  }
+
+  /* =================================================================
+     HOST APP
+  ================================================================= */
+  function initHost(){
+    var rowEls = {};
+    var lastShownPhase = null;
+    var GAME_DURATION_HOST = 20;
+
+    /* ---------- procedural "hype" music (Web Audio, no external assets) ---------- */
+    var audioCtx = null, musicTimer = null, musicStep = 0, musicMuted = false;
+    var ARP = [261.6, 329.6, 392.0, 523.3, 392.0, 466.2, 523.3, 587.3];
+    var BPM = 150, beatDur = 60 / BPM, stepDur = beatDur / 2;
+
+    function playTone(freq, time, dur, gainPeak){
+      if (!audioCtx) return;
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(freq, time);
+      gain.gain.setValueAtTime(0.0001, time);
+      gain.gain.exponentialRampToValueAtTime(gainPeak, time + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(time); osc.stop(time + dur + 0.02);
+    }
+    function playKick(time){
+      if (!audioCtx) return;
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(150, time);
+      osc.frequency.exponentialRampToValueAtTime(46, time + 0.12);
+      gain.gain.setValueAtTime(0.9, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.16);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(time); osc.stop(time + 0.2);
+    }
+    function scheduleMusicLoop(){
+      if (!audioCtx || musicMuted) return;
+      var t0 = audioCtx.currentTime + 0.05;
+      for (var i = 0; i < 8; i++){
+        var t = t0 + i * stepDur;
+        if ((musicStep + i) % 4 === 0) playKick(t);
+        playTone(ARP[(musicStep + i) % ARP.length], t, stepDur * 0.85, 0.09);
+      }
+      musicStep += 8;
+    }
+    function startMusic(){
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+      } catch(e){ return; }
+      stopMusic();
+      musicStep = 0;
+      scheduleMusicLoop();
+      musicTimer = setInterval(scheduleMusicLoop, stepDur * 8 * 1000);
+    }
+    function stopMusic(){
+      if (musicTimer){ clearInterval(musicTimer); musicTimer = null; }
+    }
+    document.getElementById("btnMuteMusic").addEventListener("click", function(){
+      musicMuted = !musicMuted;
+      this.textContent = musicMuted ? "🔇 음악 켜기" : "🔊 음악 끄기";
+      if (musicMuted) stopMusic(); else if (readPhase() === "playing") startMusic();
+    });
+
+    /* ---------- sequential host screens ---------- */
+    var HOST_SCREENS = ["host-lobby","host-select","host-explain","host-playing","host-roundwait","host-tally","host-ended","host-results"];
+    function showHost(id){
+      HOST_SCREENS.forEach(function(s){ document.getElementById(s).hidden = (s !== id); });
+    }
+    var PHASE_TO_SCREEN = { lobby:"host-lobby", select:"host-select", explain:"host-explain", playing:"host-playing", roundwait:"host-roundwait", tally:"host-tally", ended:"host-ended", results:"host-results" };
+    var ROUND_LABEL = { 1: "첫 번째", 2: "두 번째", 3: "세 번째" };
+
+    function renderBoard(players){
+      var boardBody = document.getElementById("boardBody");
+      var ids = Object.keys(players);
+      var isG3 = (readSelectedGame() === "game3");
+      var fmtScore = isG3 ? function(v){ return Math.round(v).toLocaleString("ko-KR") + "점"; } : fmtKRW;
+      document.getElementById("statTopLabel").textContent = isG3 ? "1위 점수" : "1위 자산";
+      document.getElementById("statAvgLabel").textContent = isG3 ? "평균 점수" : "평균 자산";
+      document.getElementById("colAssetLabel").textContent = isG3 ? "점수" : "자산";
+      document.getElementById("statCount").textContent = ids.length + "명";
+      if (ids.length === 0){
+        boardBody.innerHTML = '<div class="empty-note">아직 참가자가 없습니다. 참가자용 링크를 공유해주세요.</div>';
+        document.getElementById("statTop").textContent = "−";
+        document.getElementById("statAvg").textContent = "−";
+        rowEls = {};
+        return;
+      }
+      var gameIdForBoard = readSelectedGame() || "game1";
+      var sorted = ids.map(function(id){
+        var p = players[id];
+        var scores = (p.gameScores && p.gameScores[gameIdForBoard]) || [];
+        var valid = scores.filter(function(v){ return typeof v === "number"; });
+        var best = valid.length ? Math.max.apply(null, valid) : (isG3 ? 0 : 1000000);
+        return { id:id, name:p.name, asset:best, confirmed:!!p.confirmedRound };
+      }).sort(function(a,b){ return b.asset - a.asset; });
+
+      var oldRects = {};
+      sorted.forEach(function(p){
+        var el = rowEls[p.id];
+        if (el) oldRects[p.id] = el.getBoundingClientRect().top;
+      });
+      Object.keys(rowEls).forEach(function(id){
+        if (!players[id]){ rowEls[id].remove(); delete rowEls[id]; }
+      });
+      sorted.forEach(function(p, idx){
+        var el = rowEls[p.id];
+        if (!el){
+          el = document.createElement("div");
+          el.className = "row";
+          el.innerHTML = '<div class="rank"></div><div class="name"></div><div class="asset mono"></div>';
+          rowEls[p.id] = el;
+        }
+        var rankNum = idx + 1;
+        el.className = "row" + (rankNum <= 3 ? " r" + rankNum : "");
+        var medal = rankNum === 1 ? "🥇" : rankNum === 2 ? "🥈" : rankNum === 3 ? "🥉" : String(rankNum);
+        el.querySelector(".rank").textContent = medal;
+        el.querySelector(".name").innerHTML = (p.confirmed ? '<span class="ready-dot"></span>' : '') + p.name;
+        el.querySelector(".asset").textContent = fmtScore(p.asset);
+        document.getElementById("boardBody").appendChild(el);
+      });
+      sorted.forEach(function(p){
+        var el = rowEls[p.id];
+        var oldTop = oldRects[p.id];
+        if (oldTop == null) return;
+        var newTop = el.getBoundingClientRect().top;
+        var delta = oldTop - newTop;
+        if (Math.abs(delta) > 1){
+          el.style.transition = "none";
+          el.style.transform = "translateY(" + delta + "px)";
+          requestAnimationFrame(function(){
+            el.style.transition = "transform .4s ease";
+            el.style.transform = "translateY(0)";
+          });
+        }
+      });
+      var top = sorted[0];
+      document.getElementById("statTop").textContent = fmtScore(top.asset);
+      var avg = sorted.reduce(function(s,p){ return s + p.asset; }, 0) / sorted.length;
+      document.getElementById("statAvg").textContent = fmtScore(avg);
+    }
+
+    function render(){
+      var players = readPlayers();
+      var phase = readPhase();
+
+      if (phase === "playing"){
+        var startedAt = readPhaseTs();
+        if (startedAt && (Date.now() - startedAt) / 1000 >= HOST_ROUND_SECONDS){
+          var roundNow = readRound() || 1;
+          var totalRoundsForGame = ROUND_COUNTS[readSelectedGame()] || 3;
+          if (roundNow < totalRoundsForGame){
+            // NOTE: we deliberately do NOT reset players' confirmedRound here.
+            // confirmedRound tracks "highest round this player is ready for",
+            // so a player who already clicked their round-action button in the
+            // few seconds before this auto-transition stays correctly counted
+            // for the upcoming round — no race, no lost readiness.
+            writeRound(roundNow + 1);
+            writePhase("roundwait");
+            phase = "roundwait";
+          } else {
+            writePhase("tally");
+            phase = "tally";
+          }
+        }
+      }
+
+      // side effects when entering/leaving a phase
+      if (phase !== lastShownPhase){
+        if (phase === "playing") startMusic();
+        else stopMusic();
+        lastShownPhase = phase;
+      }
+
+      showHost(PHASE_TO_SCREEN[phase] || "host-lobby");
+
+      var joinCount = Object.keys(players).length;
+      function confirmedCountFor(targetRound){
+        var n = 0;
+        Object.keys(players).forEach(function(k){ if ((players[k].confirmedRound || 0) >= targetRound) n++; });
+        return n;
+      }
+
+      if (phase === "lobby"){
+        document.getElementById("lobbyCount").textContent = String(joinCount);
+      } else if (phase === "explain"){
+        var gameId = readSelectedGame() || "game1";
+        document.getElementById("hostExplainGameName").textContent = GAME_NAMES[gameId] || gameId;
+        document.getElementById("hostConfirmedCount").textContent = String(confirmedCountFor(1));
+        document.getElementById("hostJoinCount2").textContent = String(joinCount);
+        document.getElementById("hostRulesGame1").hidden = (gameId !== "game1");
+        document.getElementById("hostRulesGame2").hidden = (gameId !== "game2");
+        document.getElementById("hostRulesGame3").hidden = (gameId !== "game3");
+      } else if (phase === "playing"){
+        var gameId2 = readSelectedGame() || "game1";
+        var roundPlaying = readRound() || 1;
+        document.getElementById("hostPlayingTitle").textContent = "🔥 " + (GAME_NAMES[gameId2] || gameId2) + " · " + (ROUND_LABEL[roundPlaying] || (roundPlaying + "번째")) + " 라운드 진행 중!";
+        var startedAt2 = readPhaseTs();
+        var elapsed = startedAt2 ? (Date.now() - startedAt2) / 1000 : 0;
+        var remain = Math.max(0, GAME_DURATION_HOST - elapsed);
+        document.getElementById("hostCountdown").textContent = remain > 0 ? String(Math.ceil(remain)) : "채점 중…";
+        document.getElementById("hostPlayingBar").style.width = (Math.max(0, remain) / GAME_DURATION_HOST * 100) + "%";
+      } else if (phase === "roundwait"){
+        var roundWaiting = readRound() || 1;
+        document.getElementById("hostRoundLabel").textContent = ROUND_LABEL[roundWaiting] || (roundWaiting + "번째");
+        document.getElementById("hostRoundConfirmedCount").textContent = String(confirmedCountFor(roundWaiting));
+        document.getElementById("hostRoundJoinCount").textContent = String(joinCount);
+      } else if (phase === "ended"){
+        var gameIdEnded = readSelectedGame() || "game1";
+        document.getElementById("prizeText").innerHTML = PRIZE_TEXT[gameIdEnded] || PRIZE_TEXT.game1;
+      } else if (phase === "results"){
+        var gameIdResults = readSelectedGame() || "game1";
+        document.getElementById("hostResultsGameName").textContent = GAME_NAMES[gameIdResults] || gameIdResults;
+        renderBoard(players);
+      }
+    }
+
+    document.getElementById("btnGoSelect").addEventListener("click", function(){
+      writePhase("select");
+      render();
+    });
+    function resetAllConfirmed(){
+      var players = readPlayers();
+      Object.keys(players).forEach(function(id){ players[id].confirmedRound = 0; });
+      writePlayers(players);
+    }
+    document.getElementById("hostCardGame1").addEventListener("click", function(){
+      writeSelectedGame("game1");
+      writeRound(1);
+      resetAllConfirmed();
+      writePhase("explain");
+      render();
+    });
+    document.getElementById("hostCardGame2").addEventListener("click", function(){
+      writeSelectedGame("game2");
+      writeRound(1);
+      resetAllConfirmed();
+      writePhase("explain");
+      render();
+    });
+    document.getElementById("hostCardGame3").addEventListener("click", function(){
+      writeSelectedGame("game3");
+      writeRound(1);
+      resetAllConfirmed();
+      writePhase("explain");
+      render();
+    });
+    document.getElementById("btnHostStartGame").addEventListener("click", function(){
+      writePhaseTs(Date.now());
+      writePhase("playing");
+      render();
+    });
+    document.getElementById("btnHostStartRound").addEventListener("click", function(){
+      writePhaseTs(Date.now());
+      writePhase("playing");
+      render();
+    });
+    document.getElementById("btnTally").addEventListener("click", function(){
+      writePhase("ended");
+      render();
+    });
+    document.getElementById("btnRevealScores").addEventListener("click", function(){
+      writePhase("results");
+      render();
+    });
+    // 최종 순위 화면에서 "게임 목록으로 돌아가기" — 방금 본 게임의 기록(gameScores)은
+    // 그대로 두고(다른 게임 결과를 덮어쓰지 않음) 게임 선택 화면으로만 돌아간다.
+    document.getElementById("btnBackToList").addEventListener("click", function(){
+      writeSelectedGame("");
+      writeRound(1);
+      writePhaseTs(0);
+      resetAllConfirmed();
+      writePhase("select");
+      render();
+    });
+    document.getElementById("btnResetRound").addEventListener("click", function(){
+      var players = readPlayers();
+      Object.keys(players).forEach(function(id){
+        players[id].confirmedRound = 0;
+        players[id].asset = 1000000;
+        players[id].gameScores = {};
+      });
+      writePlayers(players);
+      writePhaseTs(0);
+      writeSelectedGame("");
+      writeRound(1);
+      writePhase("lobby");
+      stopMusic();
+      render();
+    });
+
+    _onRemoteUpdate = function(){ render(); };
+    setInterval(render, 500);
+    render();
+  }
+
+})();
+</script>
