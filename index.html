@@ -888,6 +888,22 @@
 
   function readPlayers(){ return _cache.players || {}; }
   function writePlayers(obj){ _cache.players = obj; if (_fbReady) db.ref(ROOM + "/players").set(obj); }
+  // Merge-write into just ONE player's own sub-node, instead of reading the
+  // whole players object and writing it all back (the old writePlayers()
+  // pattern every caller used to use). With many concurrent players — and
+  // especially with pushAsset() firing every 500ms per active player during
+  // gameplay — a full-object overwrite is a classic multi-writer race: if a
+  // client's local snapshot of OTHER players is even briefly behind (normal
+  // over a real network), its next periodic full-object write silently
+  // reverts everyone else's most recent changes (e.g. another player's
+  // confirmedRound flip disappears). Writing only this player's own path
+  // with Firebase's merge-update makes concurrent players' writes fully
+  // independent — nobody can ever clobber anybody else's fields.
+  function writePlayerField(id, patch){
+    _cache.players = _cache.players || {};
+    _cache.players[id] = Object.assign({}, _cache.players[id] || {}, patch);
+    if (_fbReady) db.ref(ROOM + "/players/" + id).update(patch);
+  }
   function readPhase(){ return _cache.phase || "lobby"; }
   function writePhase(p){ _cache.phase = p; if (_fbReady) db.ref(ROOM + "/phase").set(p); }
   function readPhaseTs(){ return Number(_cache.phaseTs) || 0; }
@@ -1005,9 +1021,7 @@
     } catch(e){}
 
     function joinAsPlayer(name){
-      var players = readPlayers();
-      players[PLAYER_ID] = { name: name, confirmedRound: 0, asset: INITIAL_ASSET, ts: Date.now() };
-      writePlayers(players);
+      writePlayerField(PLAYER_ID, { name: name, confirmedRound: 0, asset: INITIAL_ASSET, ts: Date.now() });
     }
     // confirmedRound = the highest round number this player has confirmed
     // they're ready to play. Round-aware (rather than a single reused boolean)
@@ -1015,15 +1029,10 @@
     // by the host's automatic round transition before the host's "게임 시작"
     // click for round N+1 actually happens.
     function setConfirmedRound(r){
-      var players = readPlayers();
-      players[PLAYER_ID] = players[PLAYER_ID] || { name: state.nickname, asset: state.asset, ts: Date.now() };
-      players[PLAYER_ID].confirmedRound = r;
-      players[PLAYER_ID].name = state.nickname;
-      writePlayers(players);
+      writePlayerField(PLAYER_ID, { confirmedRound: r, name: state.nickname });
     }
     function pushAsset(){
-      var players = readPlayers();
-      if (players[PLAYER_ID]){ players[PLAYER_ID].asset = state.asset; writePlayers(players); }
+      writePlayerField(PLAYER_ID, { asset: state.asset });
     }
     function liveJoinCount(){ return Object.keys(readPlayers()).length; }
     function liveConfirmedCount(targetRound){
@@ -1272,14 +1281,16 @@
     // 서로 덮어쓰지 않도록 gameId별 배열에 저장한다 (한 닉네임이 여러 게임을 순서대로
     // 플레이해도 이전 게임 결과가 그대로 남아있어야 최종 집계 때 게임별로 순위를 낼 수 있음).
     function recordRoundScore(round, finalValue, gameId){
-      var players = readPlayers();
-      var p = players[PLAYER_ID];
+      var p = readPlayers()[PLAYER_ID];
       if (!p) return;
-      p.gameScores = p.gameScores || {};
-      p.gameScores[gameId] = p.gameScores[gameId] || [];
-      p.gameScores[gameId][round - 1] = finalValue;
-      p.asset = finalValue;
-      writePlayers(players);
+      // Build the full merged gameScores object (this player's own field —
+      // nobody else ever writes it, so overwriting the whole thing here is
+      // safe) and send it as one field via writePlayerField, which only
+      // touches this player's node and leaves everyone else untouched.
+      var gameScores = p.gameScores ? JSON.parse(JSON.stringify(p.gameScores)) : {};
+      gameScores[gameId] = gameScores[gameId] ? gameScores[gameId].slice() : [];
+      gameScores[gameId][round - 1] = finalValue;
+      writePlayerField(PLAYER_ID, { gameScores: gameScores, asset: finalValue });
     }
 
     var ORDINAL_KR = { 2: "두번째", 3: "세번째", 4: "네번째" };
@@ -1898,28 +1909,55 @@
       document.getElementById("statAvg").textContent = fmtScore(avg);
     }
 
+    var advancingRound = false; // in-flight guard so overlapping render() ticks never race twice
     function render(){
       var players = readPlayers();
       var phase = readPhase();
 
-      if (phase === "playing"){
+      if (phase === "playing" && !advancingRound){
         var startedAt = readPhaseTs();
         if (startedAt && (Date.now() - startedAt) / 1000 >= HOST_ROUND_SECONDS){
-          var roundNow = readRound() || 1;
+          advancingRound = true;
+          var expectedRound = readRound() || 1;
           var totalRoundsForGame = ROUND_COUNTS[readSelectedGame()] || 3;
-          if (roundNow < totalRoundsForGame){
-            // NOTE: we deliberately do NOT reset players' confirmedRound here.
-            // confirmedRound tracks "highest round this player is ready for",
-            // so a player who already clicked their round-action button in the
-            // few seconds before this auto-transition stays correctly counted
-            // for the upcoming round — no race, no lost readiness.
-            writeRound(roundNow + 1);
-            writePhase("roundwait");
-            phase = "roundwait";
+          // NOTE: we deliberately do NOT reset players' confirmedRound here.
+          // confirmedRound tracks "highest round this player is ready for",
+          // so a player who already clicked their round-action button in the
+          // few seconds before this auto-transition stays correctly counted
+          // for the upcoming round — no race, no lost readiness.
+          if (!_fbReady){
+            // Local-only fallback (offline/single-tab testing) — no other
+            // writer can possibly race this, so just apply it directly.
+            if (expectedRound < totalRoundsForGame){ writeRound(expectedRound + 1); writePhase("roundwait"); }
+            else { writePhase("tally"); }
+            advancingRound = false;
           } else {
-            writePhase("tally");
-            phase = "tally";
+            // Atomic compare-and-swap on /round via a Firebase transaction.
+            // If the host page is accidentally open in two tabs (or render()
+            // fires again before the previous phase write has propagated
+            // back down), every extra attempt reads the SAME "current" round,
+            // but Firebase only lets ONE of them actually commit a change —
+            // every other attempt is retried against the now-advanced value,
+            // sees current !== expectedRound, and aborts. This is what
+            // guarantees a round is only ever advanced once, however many
+            // host instances or overlapping render() calls try at once —
+            // without it, a duplicate tab could silently double-advance the
+            // round counter and make the game end one round early.
+            db.ref(ROOM + "/round").transaction(function(current){
+              var cur = current || 1;
+              if (cur !== expectedRound) return; // someone else already advanced this — abort
+              return (cur < totalRoundsForGame) ? (cur + 1) : cur;
+            }, function(error, committed, snapshot){
+              advancingRound = false;
+              if (error || !committed) return; // lost the race, or a transient error — do nothing
+              var newRound = snapshot ? snapshot.val() : expectedRound;
+              if (newRound > expectedRound){ writePhase("roundwait"); }
+              else { writePhase("tally"); }
+            });
           }
+          // This render() pass still shows the current ("playing") screen;
+          // the next pass (poll or remote update, within ~500ms) picks up
+          // the phase change once the winning write lands.
         }
       }
 
