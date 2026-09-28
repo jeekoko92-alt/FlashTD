@@ -1,24 +1,20 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport id="vpMeta" content="width=device-width,initial-scale=1,viewport-fit=cover"><script>
-// 카카오톡/네이버 등 일부 인앱 브라우저는 viewport meta의 width=device-width를 무시하고
-// 임의의 넓은 가상 뷰포트(보통 980px 안팎)로 렌더링해서, 실제로는 폭이 좁은 모바일 화면인데도
-// 페이지 전체가 축소되어 표시되고 글자를 보려면 사용자가 확대해야 하는 문제가 생긴다.
-// 매 기기/브라우저마다 실제 창 너비(window.outerWidth 또는 innerWidth)를 읽어 viewport meta를
-// 그 값으로 다시 써주면, 인앱 브라우저가 어떤 기본값을 쓰든 실제 화면 폭에 딱 맞게 렌더링된다.
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><script>
+// 실제 기기(삼성 브라우저·크롬 모두)에서 화면 절반 가까이가 새까맣게 비고 버튼이
+// 화면 밖으로 밀려나던 원인: CSS의 100vh(그리고 100dvh)가 삼성 인터넷 등 일부 안드로이드
+// 브라우저에서 실제 눈에 보이는 화면 높이보다 훨씬 크게 계산되는 고질적인 버그 때문이었다.
+// #playerApp/#hostApp이 min-height:100vh였는데, 그 100vh가 실제보다 훨씬 크게 잡히면
+// 안의 .spacer(flex:1)가 그 남는 공간을 다 차지해버려서 정작 아래에 있던 "입장하기" 버튼이
+// 화면 훨씬 아래로 밀려나 안 보이게 된다 — 확대/축소를 해도 CSS 단위 자체가 틀어진 거라
+// 고쳐지지 않는다. CSS 단위 대신 실제 window.innerHeight(자바스크립트로 읽는 진짜 보이는
+// 높이)를 --vh 변수로 저장해두고 CSS에서 100vh 대신 이 값을 쓰도록 바꿔서 해결한다.
 (function(){
-  function fitViewport(){
-    var w = Math.min(window.outerWidth || 0, window.innerWidth || 0) || window.innerWidth || window.outerWidth;
-    var meta = document.getElementById("vpMeta");
-    if (!meta || !w) return;
-    if (w > 0 && w < 520){
-      meta.setAttribute("content", "width=device-width,initial-scale=1,viewport-fit=cover");
-    } else {
-      meta.setAttribute("content", "width=" + w + ",initial-scale=1,viewport-fit=cover");
-    }
+  function setVH(){
+    var vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty("--vh", vh + "px");
   }
-  fitViewport();
-  document.addEventListener("DOMContentLoaded", fitViewport);
-  window.addEventListener("resize", fitViewport);
-  window.addEventListener("orientationchange", function(){ setTimeout(fitViewport, 60); });
+  setVH();
+  window.addEventListener("resize", setVH);
+  window.addEventListener("orientationchange", function(){ setTimeout(setVH, 60); });
 })();
 </script><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413;-webkit-text-size-adjust:100%;text-size-adjust:100%}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>불장 러시</title>
@@ -64,7 +60,7 @@
     width:100%;
     max-width:480px;
     min-height:100vh;
-    min-height:100dvh;
+    min-height:calc(var(--vh, 1vh) * 100);
     display:flex;
     flex-direction:column;
     position:relative;
@@ -333,7 +329,7 @@
 
   /* ================= HOST APP ================= */
   #hostApp{
-    width:100%; max-width:920px; min-height:100vh; min-height:100dvh;
+    width:100%; max-width:920px; min-height:100vh; min-height:calc(var(--vh, 1vh) * 100);
     display:flex; flex-direction:column;
     padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(24px + env(safe-area-inset-bottom,0px));
     background:
@@ -698,6 +694,7 @@
   <div class="topbar">
     <div class="brand"><span class="mark">불장 러시</span><span class="host-badge">HOST VIEW</span></div>
     <div style="display:flex; align-items:center; gap:10px;">
+      <button class="reset-link" id="btnResetAllPlayers" style="opacity:.55;">참여자 전체 초기화</button>
       <button class="reset-link" id="btnResetRound">라운드 초기화</button>
       <div class="live-badge"><span class="live-dot"></span>LIVE</div>
     </div>
@@ -1016,8 +1013,13 @@
       }
     }
 
+    // 실제 참가자용 화면에는 "호스트 액션 (테스트용)" 패널이 보이면 안 되므로 기본적으로
+    // 항상 숨긴다. 개발 중 호스트 탭을 따로 열지 않고 테스트하고 싶을 때만 링크 뒤에
+    // ?debug=1 을 붙이면(예: 링크주소?debug=1) 이 패널이 다시 보인다.
+    var DEBUG_MODE = /(?:^|[?&])debug=1(?:&|$)/.test(location.search);
     function updateQuickHostPanel(){
       var panel = document.getElementById("quickHostPanel");
+      if (!DEBUG_MODE){ panel.hidden = true; return; }
       var text = document.getElementById("quickHostText");
       var btn = document.getElementById("quickHostBtn");
       var btn2 = document.getElementById("quickHostBtn2");
@@ -2125,6 +2127,13 @@
       resetAllConfirmed();
       writePhase("select");
       render();
+    });
+    // "참여자 전체 초기화" — 라운드 초기화(점수만 리셋)와 달리 /players 자체를 통째로 비워서
+    // 접속했던 사람 기록을 전부 지운다. 호스트 화면(#host)에서만 보이는 버튼이므로 일반
+    // 참가자는 접근할 수 없고, 실수 방지를 위해 확인창을 한 번 더 띄운다.
+    document.getElementById("btnResetAllPlayers").addEventListener("click", function(){
+      if (!confirm("정말 참여자 전체를 초기화할까요?\n(현재까지 입장한 모든 사람의 닉네임·점수 기록이 삭제되며 되돌릴 수 없습니다)")) return;
+      writePlayers({});
     });
     document.getElementById("btnResetRound").addEventListener("click", function(){
       var players = readPlayers();
