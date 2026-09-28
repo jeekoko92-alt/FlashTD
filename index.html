@@ -1,3 +1,26 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport id="vpMeta" content="width=device-width,initial-scale=1,viewport-fit=cover"><script>
+// 카카오톡/네이버 등 일부 인앱 브라우저는 viewport meta의 width=device-width를 무시하고
+// 임의의 넓은 가상 뷰포트(보통 980px 안팎)로 렌더링해서, 실제로는 폭이 좁은 모바일 화면인데도
+// 페이지 전체가 축소되어 표시되고 글자를 보려면 사용자가 확대해야 하는 문제가 생긴다.
+// 매 기기/브라우저마다 실제 창 너비(window.outerWidth 또는 innerWidth)를 읽어 viewport meta를
+// 그 값으로 다시 써주면, 인앱 브라우저가 어떤 기본값을 쓰든 실제 화면 폭에 딱 맞게 렌더링된다.
+(function(){
+  function fitViewport(){
+    var w = Math.min(window.outerWidth || 0, window.innerWidth || 0) || window.innerWidth || window.outerWidth;
+    var meta = document.getElementById("vpMeta");
+    if (!meta || !w) return;
+    if (w > 0 && w < 520){
+      meta.setAttribute("content", "width=device-width,initial-scale=1,viewport-fit=cover");
+    } else {
+      meta.setAttribute("content", "width=" + w + ",initial-scale=1,viewport-fit=cover");
+    }
+  }
+  fitViewport();
+  document.addEventListener("DOMContentLoaded", fitViewport);
+  window.addEventListener("resize", fitViewport);
+  window.addEventListener("orientationchange", function(){ setTimeout(fitViewport, 60); });
+})();
+</script><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413;-webkit-text-size-adjust:100%;text-size-adjust:100%}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>불장 러시</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
@@ -41,6 +64,7 @@
     width:100%;
     max-width:480px;
     min-height:100vh;
+    min-height:100dvh;
     display:flex;
     flex-direction:column;
     position:relative;
@@ -309,7 +333,7 @@
 
   /* ================= HOST APP ================= */
   #hostApp{
-    width:100%; max-width:920px; min-height:100vh;
+    width:100%; max-width:920px; min-height:100vh; min-height:100dvh;
     display:flex; flex-direction:column;
     padding:calc(18px + env(safe-area-inset-top,0px)) 20px calc(24px + env(safe-area-inset-bottom,0px));
     background:
@@ -913,16 +937,30 @@
   function readRound(){ var v = Number(_cache.round); return (v && v >= 1) ? v : 1; }
   function writeRound(r){ _cache.round = r; if (_fbReady) db.ref(ROOM + "/round").set(r); }
 
-  var PLAYER_ID = (function(){
-    try {
-      var id = sessionStorage.getItem("br_pid");
-      if (!id){
-        id = "p_" + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
-        sessionStorage.setItem("br_pid", id);
+  // PLAYER_ID는 더 이상 세션마다 새로 뽑는 난수가 아니라, 닉네임으로부터 그대로 계산한다.
+  // (이전엔 탭을 닫았다 같은 닉네임으로 재접속해도 새 난수 ID가 나와서 매번 /players에
+  // 새 항목이 쌓였다 — "실시간 인원"이 나갔다 들어올 때마다 무한히 늘어나던 원인.)
+  // 같은 닉네임 -> 같은 ID -> 같은 Firebase 레코드를 재사용하므로 인원수/점수가 자연히 유지된다.
+  // (부작용: 서로 다른 두 사람이 완전히 동일한 닉네임을 쓰면 같은 레코드를 공유하게 된다.)
+  var PLAYER_ID = null;
+  function nicknameToId(name){
+    var clean = String(name || "").trim().replace(/[.$#\[\]\/\x00-\x1F\x7F]/g, "");
+    if (!clean) clean = "player";
+    return "p_" + clean;
+  }
+  // Firebase Realtime Database 프레즌스: 연결이 끊기면(탭/앱 종료, 네트워크 끊김 등)
+  // onDisconnect가 서버 쪽에서 자동으로 online:false를 기록해서 "실시간 인원"에서 빠지고,
+  // 같은 닉네임으로 다시 들어오면 online:true로 복구되면서 인원수도 되돌아온다.
+  // (샌드박스 환경은 firebaseio.com 접속이 막혀 있어 이 부분은 실제 기기 재테스트가 필요합니다.)
+  function armPresence(id){
+    if (!_fbReady || !id) return;
+    db.ref(".info/connected").on("value", function(snap){
+      if (snap.val() === true){
+        db.ref(ROOM + "/players/" + id + "/online").onDisconnect().set(false);
+        db.ref(ROOM + "/players/" + id + "/online").set(true);
       }
-      return id;
-    } catch(e){ return "p_" + Math.random().toString(36).slice(2,10); }
-  })();
+    });
+  }
 
   function fmtKRW(n){ return Math.round(n).toLocaleString("ko-KR") + "원"; }
 
@@ -1021,7 +1059,17 @@
     } catch(e){}
 
     function joinAsPlayer(name){
-      writePlayerField(PLAYER_ID, { name: name, confirmedRound: 0, asset: INITIAL_ASSET, ts: Date.now() });
+      // 이미 같은 닉네임(=같은 PLAYER_ID)으로 참가한 기록이 있으면 "재입장"으로 보고
+      // 점수/자산/라운드 진행 상태는 건드리지 않고 online 상태만 되돌린다.
+      // 처음 들어오는 닉네임이면 새 레코드로 초기화한다.
+      var existing = readPlayers()[PLAYER_ID];
+      if (existing){
+        writePlayerField(PLAYER_ID, { name: name, online: true, ts: Date.now() });
+        state.asset = (typeof existing.asset === "number") ? existing.asset : INITIAL_ASSET;
+      } else {
+        writePlayerField(PLAYER_ID, { name: name, confirmedRound: 0, asset: INITIAL_ASSET, gameScores: {}, online: true, ts: Date.now() });
+        state.asset = INITIAL_ASSET;
+      }
     }
     // confirmedRound = the highest round number this player has confirmed
     // they're ready to play. Round-aware (rather than a single reused boolean)
@@ -1034,7 +1082,14 @@
     function pushAsset(){
       writePlayerField(PLAYER_ID, { asset: state.asset });
     }
-    function liveJoinCount(){ return Object.keys(readPlayers()).length; }
+    // online 필드가 명시적으로 false인(연결이 끊긴) 플레이어만 실시간 인원에서 제외한다.
+    // (필드가 아직 없는 예전 레코드는 접속 중으로 간주해 안전하게 처리)
+    function liveJoinCount(){
+      var players = readPlayers();
+      var n = 0;
+      Object.keys(players).forEach(function(k){ if (players[k].online !== false) n++; });
+      return n;
+    }
     function liveConfirmedCount(targetRound){
       var players = readPlayers();
       var n = 0;
@@ -1050,6 +1105,8 @@
       if (!v){ nickErr.textContent = "닉네임을 입력해주세요."; return; }
       nickErr.textContent = "";
       state.nickname = v;
+      PLAYER_ID = nicknameToId(v);
+      armPresence(PLAYER_ID);
       try { localStorage.setItem("bullrush_nick", v); } catch(e){}
       joinAsPlayer(v);
 
@@ -2092,3 +2149,5 @@
 
 })();
 </script>
+
+</body></html>
